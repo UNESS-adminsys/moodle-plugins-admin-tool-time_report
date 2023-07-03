@@ -43,7 +43,6 @@ function tool_time_report_myprofile_navigation(core_user\output\myprofile\tree $
     global $CFG, $USER;
 
     $context = context_system::instance();
-    $userid = required_param('id', PARAM_INT);
     $courseid = optional_param('courseid', 0, PARAM_INT); // User id.
 
     if (!array_key_exists('reports', $tree->__get('categories'))) {

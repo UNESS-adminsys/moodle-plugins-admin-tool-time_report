@@ -25,6 +25,130 @@
 
 defined('MOODLE_INTERNAL') || die();
 
+
+function tget_user_log_records(int $user_id, int $start_time = 0, int $end_time = 0) {
+    global $DB;
+    $logstore_name = tget_enabled_logstore_name();
+
+    switch ($logstore_name) {
+        case 'logstore_database':
+            $dbtable = get_config('logstore_database', 'dbtable');
+            $dbdriver = get_config('logstore_database', 'dbdriver');
+            list($dblibrary, $dbtype) = explode('/', $dbdriver);
+
+            if (!$db = \moodle_database::get_driver_instance($dbtype, $dblibrary, true)) {
+                return 'Cette fonctionnalité est indisponible. (UNKNOWN_DRIVER)';
+            }
+
+            $dboptions = [];
+            $dboptions['dbpersist'] = get_config('logstore_database', 'dbpersist');
+            $dboptions['dbsocket'] = get_config('logstore_database', 'dbsocket');
+            $dboptions['dbport'] = get_config('logstore_database', 'dbport');
+            $dboptions['dbschema'] = get_config('logstore_database', 'dbschema');
+            $dboptions['dbcollation'] = get_config('logstore_database', 'dbcollation');
+            $dboptions['dbhandlesoptions'] = get_config('logstore_database', 'dbhandlesoptions');
+
+            try {
+                $db->connect(
+                    get_config('logstore_database', 'dbhost'),
+                    get_config('logstore_database', 'dbuser'),
+                    get_config('logstore_database', 'dbpass'),
+                    get_config('logstore_database', 'dbname'),
+                    false,
+                    $dboptions
+                );
+
+                $selected_db = $db;
+            } catch (\moodle_exception $e) {
+                return 'Cette fonctionnalité est indisponible. (LOGS_ACCESS_2)';
+            }
+
+            break;
+        case 'logstore_standard':
+            $manager = new \tool_log\log\manager();
+            $store = new \logstore_standard\log\store($manager);
+            $dbtable = '{' . $store->get_internal_log_table_name() . '}';
+            $selected_db = $DB;
+            break;
+        default:
+            // Not supported.
+            return 'Cette fonctionnalité est indisponible. (LOGS_ACCESS_3)';
+    }
+
+    $sql = "
+        SELECT TO_TIMESTAMP(timecreated)::date as date, json_agg(json_build_object(
+            'timecreated', timecreated, 'action', action, 'target', target, 'courseid', courseid) ORDER BY timecreated
+        ) as logs
+        FROM $dbtable
+        WHERE userid = ? AND courseid <> 1
+    ";
+
+    // Check period.
+    if ($start_time && $end_time) {
+        $sql .= " AND timecreated BETWEEN $start_time AND $end_time";
+    } elseif ($start_time) {
+        $sql .= " AND timecreated >= $start_time";
+    } elseif ($end_time) {
+        $sql .= " AND timecreated <= $end_time";
+    }
+
+    $sql .= ' GROUP BY date';
+
+    return $selected_db->get_records_sql($sql, [$user_id]);
+}
+
+/**
+ * Generates the filename.
+ * By: Pierre Duverneix
+ * @param $username
+ * @param $start_date
+ * @param $end_date
+ * @return string
+ * @throws coding_exception
+ */
+function tgenerate_file_name($username, $start_time, $end_time) {
+    if (!$username) throw new \coding_exception('Missing username');
+
+    $start_t = str_replace('/', '-', $start_time);
+    $end_t = str_replace('/', '-', $end_time);
+
+    $file_name = 'justificatif-activite_' . tto_snake_case($username) . '_';
+    $file_name .= ($start_time) ? $start_t . '_' : 'earlier-';
+    $file_name .= ($end_time) ? $end_t : 'latest';
+
+    return $file_name;
+}
+
+/**
+ * Adds a hyphen between month and year.
+ * By: Pierre Duverneix
+ * @param  string $str Date string
+ * @param  string $num Position of the cut off
+ * @return string
+ */
+function tformat_readable_date($str, $num) {
+    $output[0] = substr($str, 0, $num);
+    $output[1] = '-';
+    $output[2] = substr($str, $num, strlen($str));
+    return implode($output);
+}
+
+/**
+ * Generates a snake cased username.
+ * By: Pierre Duverneix
+ * @param  string $str
+ * @param  string $glue (optional)
+ * @return string
+ */
+function tto_snake_case($str, $glue = '_') {
+    $str = preg_replace('/\s+/', '', $str);
+    return ltrim(
+        preg_replace_callback('/[A-Z]/', function ($matches) use ($glue) {
+            return $glue . strtolower($matches[0]);
+        }, $str), $glue
+    );
+}
+
 /**
  * Retrives the files of existing reports
  *

@@ -38,6 +38,7 @@ use moodle_url;
 
 use pdf;
 use tool_useractivityreport\service\course_service;
+use function Complex\sec;
 
 class generate_time_report extends \core\task\adhoc_task {
 
@@ -188,12 +189,12 @@ class generate_time_report extends \core\task\adhoc_task {
 
             if (!isset($total_duration)) $total_duration = '00:00:00';
 
-            $first_table .= "<tr>
-                        <td style='text-align: center; vertical-align: middle;'>".$datetime->format('d/m/Y')."</td>
-                        <td style='text-align: center; vertical-align: middle;'>$total_duration</td>
-                        <td style='text-align: center; vertical-align: middle;'>".date('H:i', $daily_activity[$date]['first_access'])."</td>
-                        <td style='text-align: center; vertical-align: middle;'>".date('H:i', $daily_activity[$date]['last_access'])."</td>
-                      </tr>";
+            $first_table .= '<tr>
+                        <td style="text-align: center; vertical-align: middle;">"'.$datetime->format('d/m/Y').'"</td>
+                        <td style="text-align: center; vertical-align: middle;">$total_duration</td>
+                        <td style="text-align: center; vertical-align: middle;">"'.date('H:i', $daily_activity[$date]['first_access']).'"</td>
+                        <td style="text-align: center; vertical-align: middle;">"'.date('H:i', $daily_activity[$date]['last_access']).'"</td>
+                      </tr>';
 
             foreach ($date_logs as $log) {
                 if (in_array($log->target, ['course', 'course_module'])) {
@@ -207,26 +208,60 @@ class generate_time_report extends \core\task\adhoc_task {
             }
         }
 
-        $first_table .= '</table>';
+        $first_table .= '</table>
+                         <br>';
         $pdf->writeHTMLCell(0, 0, '', '', $first_table, 0, 1, 0, true, '', true);
 
 
         // Table 2
+        $current_category = '';
+        $second_table = "<h3>Tableau 2</h3>";
+        $first = true;
+
         foreach ($csv_courses as $course_name => $course) {
             $course->category_id = $DB->get_field('course', 'category', ['id' => $course->course_id]);
+
+            if (!$first) {
+                $second_table = '<table cellspacing="0" cellpadding="1" border="1" style="border-color:gray;">';
+            } else {
+                $second_table .= '<table cellspacing="0" cellpadding="1" border="1" style="border-color:gray;">';
+                $first = false;
+            };
+
+            if ($current_category != $course->category_id) {
+                $second_table .= '  <tr style="background-color:blueviolet;color:white;">
+                                        <th style="text-align: center; vertical-align: middle;">'.$DB->get_field('course_categories', 'name', ['id' => $course->category_id]).'</th>
+                                    </tr>';
+                $current_category = $course->category_id;
+            } else {
+                $current_category = $course->category_id;
+            }
+
             $course_total_duration = self::format_seconds($course->course_time_data);
 
-            $pdf->writeHTML('<br><div><b>Catégorie : '.$course->category_id.' - '.$course_name.'</b> - durée cumulée : '.$course_total_duration);
-            if ((isset($course->first_access) && isset($course->last_access) && $course->first_access != $course->last_access)) {
-                $pdf->writeHTML(' <br>Premier accès à '.$course->first_access.' <br>Dernier accès à '.$course->last_access.'</div>');
-            } else {
-                $access = (isset($course->first_access)) ? $course->first_access : $course->last_access;
-                if (isset($access)) {
-                    $pdf->writeHTML(' <br>Premier et dernier accès à ' . $access . '</div>');
-                } else {
-                    $pdf->writeHTML(" <br>Aucune heure d'accès enregistrée</div>");
-                }
-            }
+            $second_table .= '  
+                                    <tr style="background-color:lightsteelblue;color:white;">
+                                        <th style="text-align: center; vertical-align: middle;">'.$course_name.'</th>
+                                    </tr>
+                                    <tr style="background-color:black;color:white;">
+                                        <th style="text-align: center; vertical-align: middle;">Durée</th>
+                                        <th style="text-align: center; vertical-align: middle;">Premier accès</th>
+                                        <th style="text-align: center; vertical-align: middle;">Dernier accès</th>
+                                    </tr>
+                                ';
+
+            $first_access = (isset($course->first_access)) ? $course->first_access : "Non enregistré";
+            $last_access = (isset($course->last_access)) ? $course->last_access : "Non enregistré";
+
+            $second_table .= '      <tr>
+                                        <td style="text-align: center; vertical-align: middle;">'.$course_total_duration.'</td>
+                                        <td style="text-align: center; vertical-align: middle;">'.$first_access.'</td>
+                                        <td style="text-align: center; vertical-align: middle;">'.$last_access.'</td>
+                                    </tr>
+                                    </table>';
+
+            $pdf->writeHTMLCell(0, 0, '', '', $second_table, 0, 1, 0, true, '', true);
+            $pdf->writeHTML('<br>');
         }
 
 

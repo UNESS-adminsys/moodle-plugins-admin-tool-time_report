@@ -112,6 +112,9 @@ class generate_time_report extends \core\task\adhoc_task {
         $pdf->writeHTML('<div>Université : ' . $user_institution . '</div>');
         $pdf->writeHTML('<div>Spécialité : ' . $user_department . '</div>');
 
+        $pdf->writeHTML('<div><b style="color: white">----</b><b>Date</b><b style="color: white">----</b> | <b style="color: white">--</b><b>Durée</b><b style="color: white">-------</b><b>Premier accès à</b><b style="color: white">-------</b><b>Dernier accès à</b></div>');
+        $pdf->writeHTML('<div><b>06/07/2023</b> | 00:00:00 | <b style="color: white">--------</b>00:00:00<b style="color: white">--------</b> | <b style="color: white">--------</b>00:00:00<b style="color: white">--------</b></div>');
+
         $pdf->writeHTML(
             '<div>Période : du '
             . (($start_time) ? date('d/m/Y', $start_time) : 'plus ancien')
@@ -163,7 +166,18 @@ class generate_time_report extends \core\task\adhoc_task {
             $pdf->writeHTML('<br>');
         }
 
-        // Prepare PDF content.
+        // Table 1.
+        $first_table = '
+                        <h3>Tableau 1</h3>
+                        <table cellspacing="0" cellpadding="1" border="1" style="border-color:gray;">
+                            <tr style="background-color:blueviolet;color:white;">
+                                <td>Date</td>
+                                <td>Durée</td>
+                                <td>Premier accès à</td>
+                                <td>Dernier accès à</td>
+                            </tr>
+                        ';
+
         foreach ($records as $date => $data) {
             $datetime = new \DateTime($data->date . ' 23:59:59.000000');
             $date_logs = json_decode($data->logs);
@@ -177,7 +191,12 @@ class generate_time_report extends \core\task\adhoc_task {
 
             if (!isset($total_duration)) $total_duration = '00:00:00';
 
-            $pdf->writeHTML('<div><b>' . $datetime->format('d/m/Y') .'</b> - durée cumulée ce jour : '. $total_duration .' - premier accès à ' . date('H:i', $daily_activity[$date]['first_access']) . ' - dernier accès à ' . date('H:i', $daily_activity[$date]['last_access']) . ' </div>');
+            $first_table .= "<tr>
+                        <td>$datetime->format('d/m/Y')</td>
+                        <td>$total_duration</td>
+                        <td>date('H:i', $daily_activity[$date]['first_access'])</td>
+                        <td>date('H:i', $daily_activity[$date]['last_access'])</td>
+                      </tr>";
 
             foreach ($date_logs as $log) {
                 if (in_array($log->target, ['course', 'course_module'])) {
@@ -191,6 +210,11 @@ class generate_time_report extends \core\task\adhoc_task {
             }
         }
 
+        $first_table .= '</table>';
+        $pdf->writeHTMLCell(0, 0, '', '', $first_table, 0, 1, 0, true, '', true);
+
+
+        // Table 2
         foreach ($csv_courses as $course_name => $course) {
             $course->category_id = $DB->get_field('course', 'category', ['id' => $course->course_id]);
             $course_total_duration = self::format_seconds($course->course_time_data);
@@ -207,6 +231,7 @@ class generate_time_report extends \core\task\adhoc_task {
                 }
             }
         }
+
 
         if (empty($records)) {
             $pdf->writeHTML('<div><b>Aucune activité sur cette période.</b></div>');

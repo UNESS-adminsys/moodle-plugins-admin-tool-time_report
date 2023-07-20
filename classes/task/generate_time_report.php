@@ -221,17 +221,20 @@ class generate_time_report extends \core\task\adhoc_task {
         foreach ($csv_courses as $course_name => $course) {
             $course->category_id = $DB->get_field('course', 'category', ['id' => $course->course_id]);
 
-            if (!$first) {
-                $second_table = '<table cellspacing="0" cellpadding="1" border="1" style="border-color:gray;">';
-            } else {
-                $second_table .= '<table cellspacing="0" cellpadding="1" border="1" style="border-color:gray;">';
-                $first = false;
-            };
-
             if ($current_category != $course->category_id) {
-                $second_table .= '  <tr style="background-color:blueviolet;color:white;">
-                                        <th style="text-align: center; vertical-align: middle;">'.$DB->get_field('course_categories', 'name', ['id' => $course->category_id]).'</th>
-                                    </tr>';
+                if (!$first) {
+                    $second_table = '<table cellspacing="0" cellpadding="1" border="1" style="border-color:gray;">
+                                    <tr style="background-color:blueviolet;color:white;">
+                                        <th style="text-align: center; vertical-align: middle;">' . $DB->get_field('course_categories', 'name', ['id' => $course->category_id]) . '</th>
+                                    </tr>
+                                    </table>';
+                } else {
+                    $second_table .= '  <table cellspacing="0" cellpadding="1" border="1" style="border-color:gray;">
+                                    <tr style="background-color:blueviolet;color:white;">
+                                        <th style="text-align: center; vertical-align: middle;">' . $DB->get_field('course_categories', 'name', ['id' => $course->category_id]) . '</th>
+                                    </tr>
+                                    </table>';
+                }
                 $current_category = $course->category_id;
             } else {
                 $current_category = $course->category_id;
@@ -239,10 +242,12 @@ class generate_time_report extends \core\task\adhoc_task {
 
             $course_total_duration = self::format_seconds($course->course_time_data);
 
-            $second_table .= '  
+            $second_table .= '      <table cellspacing="0" cellpadding="1" border="1" style="border-color:gray;">
                                     <tr style="background-color:lightsteelblue;color:white;">
                                         <th style="text-align: center; vertical-align: middle;">'.$course_name.'</th>
                                     </tr>
+                                    </table>
+                                    <table cellspacing="0" cellpadding="1" border="1" style="border-color:gray;">
                                     <tr style="background-color:black;color:white;">
                                         <th style="text-align: center; vertical-align: middle;">Durée</th>
                                         <th style="text-align: center; vertical-align: middle;">Premier accès</th>
@@ -262,6 +267,10 @@ class generate_time_report extends \core\task\adhoc_task {
 
             $pdf->writeHTMLCell(0, 0, '', '', $second_table, 0, 1, 0, true, '', true);
             $pdf->writeHTML('<br>');
+
+            if ($first) {
+                $first = false;
+            };
         }
 
 

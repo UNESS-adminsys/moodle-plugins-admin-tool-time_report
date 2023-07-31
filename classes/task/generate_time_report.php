@@ -118,7 +118,7 @@ class generate_time_report extends \core\task\adhoc_task {
             . (($start_time) ? date('d/m/Y', $start_time) : 'plus ancien')
             . ' au '
             . (($end_time) ? date('d/m/Y', $end_time) : 'plus récent')
-            . ' - Temps de connexion total : ' . end($csvdata)[1] . '</div>'
+            . ' - Temps de connexion total : ' . $this::format_seconds($this->totaltime) . '</div>'
         );
 
         // $records is containing a string when an error occurred.
@@ -146,29 +146,67 @@ class generate_time_report extends \core\task\adhoc_task {
         }
 
         $csv_courses = [];
-        if (true) {
+        $csv_categories = [];
+        if ($is_detail_enabled) {
             foreach ($csvdata as $csv_record) {
                 if (!isset($csv_courses[$csv_record[2]])) {
                     foreach ($csv_record[2] as $key => $course_data) {
                         if (!isset($csv_courses[$key])) {
                             $csv_courses[$key] = new \stdClass();
-                            $csv_courses[$key]->course_time_data = $course_data;
-                            $csv_courses[$key]->course_id = $csv_record[3];
+                            $csv_courses[$key]->course_time_data = $course_data[0];
+                            $csv_courses[$key]->course_id = $course_data[1];
+                            $csv_courses[$key]->course_name = $key;
                         } else {
-                            $csv_courses[$key]->course_time_data += $course_data;
+                            $csv_courses[$key]->course_time_data += $course_data[0];
                         }
                     }
                 }
             }
 
             $pdf->writeHTML('<br>');
+
+            foreach ($csv_courses as $key => $course) {
+                $course->category_id = $DB->get_field('course', 'category', ['id' => $course->course_id]);
+                $course->category_name = $DB->get_field('course_categories', 'name', ['id' => $course->category_id]);
+                if (!isset($csv_categories[$course->category_id])) {
+                    $csv_categories[$course->category_id][] = $course->category_id;
+                    $csv_categories[$course->category_id][] = $course->category_name;
+                }
+                $csv_categories[$course->category_id][$key] = $course;
+            }
+
+            uasort($csv_courses, function ($a, $b) {
+                global $DB;
+                $a->category_id = $DB->get_field('course', 'category', ['id' => $a->course_id]);
+                $b->category_id = $DB->get_field('course', 'category', ['id' => $b->course_id]);
+                if ($a->category_id > $b->category_id) {
+                    return 1;
+                } else if ($a->category_id < $b->category_id) {
+                    return -1;
+                } else {
+                    return 0;
+                }
+            });
+
+            uasort($csv_categories, function ($a, $b) {
+                global $DB;
+                $a_sort_order = $DB->get_field('course_categories', 'sortorder', ['id' => $a[0]]);
+                $b_sort_order = $DB->get_field('course_categories', 'sortorder', ['id' => $b[0]]);
+                if ($a_sort_order > $b_sort_order) {
+                    return 1;
+                } else if ($a_sort_order < $b_sort_order) {
+                    return -1;
+                } else {
+                    return 0;
+                }
+            });
         }
 
         // Table 1.
         $first_table ='
                         <h3>Tableau 1</h3>
                         <table cellspacing="0" cellpadding="1" border="1" style="border-color:gray;">
-                            <tr style="background-color:blueviolet;color:white;">
+                            <tr style="background-color:darkslategray;color:white;">
                                 <td style="text-align: center; vertical-align: middle;">Date</td>
                                 <td style="text-align: center; vertical-align: middle;">Durée</td>
                                 <td style="text-align: center; vertical-align: middle;">Premier accès à</td>
@@ -187,22 +225,22 @@ class generate_time_report extends \core\task\adhoc_task {
                 }
             }
 
-            if (!isset($total_duration)) $total_duration = '00:00:00';
+            if (isset($total_duration) && $total_duration != '00:00:00') {
+                $first_table .= '<tr>
+                            <td style="text-align: center; vertical-align: middle;">' . $datetime->format('d/m/Y H:i') . '</td>
+                            <td style="text-align: center; vertical-align: middle;">' . $total_duration . '   </td>
+                            <td style="text-align: center; vertical-align: middle;">' . date('H:i', $daily_activity[$date]['first_access']) . '</td>
+                            <td style="text-align: center; vertical-align: middle;">' . date('H:i', $daily_activity[$date]['last_access']) . '</td>
+                          </tr>';
 
-            $first_table .= '<tr>
-                        <td style="text-align: center; vertical-align: middle;">"'.$datetime->format('d/m/Y').'"</td>
-                        <td style="text-align: center; vertical-align: middle;">$total_duration</td>
-                        <td style="text-align: center; vertical-align: middle;">"'.date('H:i', $daily_activity[$date]['first_access']).'"</td>
-                        <td style="text-align: center; vertical-align: middle;">"'.date('H:i', $daily_activity[$date]['last_access']).'"</td>
-                      </tr>';
-
-            foreach ($date_logs as $log) {
-                if (in_array($log->target, ['course', 'course_module'])) {
-                    $course_fullname = $this->get_course_fullname($log->courseid);
-                    if (!isset($csv_courses[$course_fullname]->first_access)) {
-                        $csv_courses[$course_fullname]->first_access = date('d/m/Y à H:i', $log->timecreated);
-                    } else {
-                        $csv_courses[$course_fullname]->last_access = date('d/m/Y à H:i', $log->timecreated);
+                foreach ($date_logs as $log) {
+                    if (in_array($log->target, ['course', 'course_module'])) {
+                        $course_fullname = $this->get_course_fullname($log->courseid);
+                        if (!isset($csv_courses[$course_fullname]->first_access)) {
+                            $csv_courses[$course_fullname]->first_access = date('d/m/Y à H:i', $log->timecreated);
+                        } else {
+                            $csv_courses[$course_fullname]->last_access = date('d/m/Y à H:i', $log->timecreated);
+                        }
                     }
                 }
             }
@@ -212,79 +250,115 @@ class generate_time_report extends \core\task\adhoc_task {
                          <br>';
         $pdf->writeHTMLCell(0, 0, '', '', $first_table, 0, 1, 0, true, '', true);
 
+        if ($is_detail_enabled) {
+            // Table 2
+            $nb_row = 3;
+            $current_category = '';
+            $second_table = '<h3>Tableau 2</h3>
+                             <table cellspacing="0" cellpadding="1" border="1" style="border-color:gray;">
+                             <tr style="background-color:darkslategray;color:white;">
+                                <th style="text-align: center; vertical-align: middle;">Catégorie</th>
+                             </tr>
+                             </table>
+                             <table cellspacing="0" cellpadding="1" border="1" style="border-color:gray;">
+                             <tr style="background-color:lightslategray;color:white;">
+                                <th style="text-align: center; vertical-align: middle;">Nom du cours</th>
+                             </tr>
+                             </table>
+                             <table cellspacing="0" cellpadding="1" border="1" style="border-color:gray;">
+                             <tr>
+                                <th style="text-align: center; vertical-align: middle;">Durée</th>
+                                <th style="text-align: center; vertical-align: middle;">Premier accès</th>
+                                <th style="text-align: center; vertical-align: middle;">Dernier accès</th>
+                             </tr>
+                             </table>'; // <br /> not supported
+            $first = true;
+            $pdf->AddPage();
 
-        // Table 2
-        $current_category = '';
-        $second_table = "<h3>Tableau 2</h3>";
-        $first = true;
+            foreach ($csv_categories as $key => $grouped_courses) {
+                $sorted_courses = $grouped_courses;
+                uasort($sorted_courses, function ($a, $b) {
+                    global $DB;
+                    $a->sort_order = $DB->get_field('course', 'sortorder', ['id' => $a->course_id]); //TODO: PROBLÈME D'ID, NE CORRESPOND PAS AU NOM DU COURS
+                    $b->sort_order = $DB->get_field('course', 'sortorder', ['id' => $b->course_id]);
+                    if ($a->sort_order > $b->sort_order) {
+                        return 1;
+                    } else if ($a->sort_order < $b->sort_order) {
+                        return -1;
+                    } else {
+                        return 0;
+                    }
+                });
 
-        foreach ($csv_courses as $course_name => $course) {
-            $course->category_id = $DB->get_field('course', 'category', ['id' => $course->course_id]);
-
-            if ($current_category != $course->category_id) {
-                if (!$first) {
-                    $second_table = '<table cellspacing="0" cellpadding="1" border="1" style="border-color:gray;">
-                                    <tr style="background-color:blueviolet;color:white;">
-                                        <th style="text-align: center; vertical-align: middle;">' . $DB->get_field('course_categories', 'name', ['id' => $course->category_id]) . '</th>
-                                    </tr>
-                                    </table>';
-                } else {
-                    $second_table .= '  <table cellspacing="0" cellpadding="1" border="1" style="border-color:gray;">
-                                    <tr style="background-color:blueviolet;color:white;">
-                                        <th style="text-align: center; vertical-align: middle;">' . $DB->get_field('course_categories', 'name', ['id' => $course->category_id]) . '</th>
-                                    </tr>
-                                    </table>';
+                // Check if enought space on current page
+                if ($nb_row > 37) {
+                    $nb_row = 0;
+                    $pdf->AddPage();
                 }
-                $current_category = $course->category_id;
-            } else {
-                $current_category = $course->category_id;
+
+                // Add category heading
+                $second_table .= '
+                                            <p></p>
+                                            <table cellspacing="0" cellpadding="1" border="1" style="border-color:gray;">
+                                            <tr style="background-color:darkslategray;color:white;">
+                                                <th style="text-align: center; vertical-align: middle;">' . $grouped_courses[1] . '</th>
+                                            </tr>
+                                            </table>';
+                $nb_row += 3;
+
+                foreach ($sorted_courses as $course_name => $course) {
+                    $course_total_duration = self::format_seconds($course->course_time_data);
+
+                    if ($course_total_duration != '00:00:00') {
+                        if ($nb_row > 40) {
+                            $nb_row = 0;
+                            $pdf->AddPage();
+                        }
+
+                        $second_table .= '      <table cellspacing="0" cellpadding="1" border="1" style="border-color:gray;">
+                                                    <tr style="background-color:lightslategray;color:white;">
+                                                        <th style="text-align: center; vertical-align: middle;">' . $course_name . '</th>
+                                                    </tr>
+                                                    </table>
+                                                ';
+                        $nb_row += 1;
+
+                        $first_access = (isset($course->first_access)) ? $course->first_access : "Non enregistré";
+                        $last_access = (isset($course->last_access)) ? $course->last_access : "Non enregistré";
+
+                        $second_table .= '      <table cellspacing="0" cellpadding="1" border="1" style="border-color:gray;">
+                                                    <tr>
+                                                        <td style="text-align: center; vertical-align: middle;">' . $course_total_duration . '</td>
+                                                        <td style="text-align: center; vertical-align: middle;">' . $first_access . '</td>
+                                                        <td style="text-align: center; vertical-align: middle;">' . $last_access . '</td>
+                                                    </tr>
+                                                    </table>';
+                        $nb_row += 1;
+
+                        $pdf->writeHTMLCell(0, 0, '', '', $second_table, 0, 1, 0, true, '', true);
+
+                        if ($first) {
+                            $first = false;
+                        };
+
+                        $second_table = '';
+                    }
+                }
+
+                $sorted_courses = [];
             }
-
-            $course_total_duration = self::format_seconds($course->course_time_data);
-
-            $second_table .= '      <table cellspacing="0" cellpadding="1" border="1" style="border-color:gray;">
-                                    <tr style="background-color:lightsteelblue;color:white;">
-                                        <th style="text-align: center; vertical-align: middle;">'.$course_name.'</th>
-                                    </tr>
-                                    </table>
-                                    <table cellspacing="0" cellpadding="1" border="1" style="border-color:gray;">
-                                    <tr style="background-color:black;color:white;">
-                                        <th style="text-align: center; vertical-align: middle;">Durée</th>
-                                        <th style="text-align: center; vertical-align: middle;">Premier accès</th>
-                                        <th style="text-align: center; vertical-align: middle;">Dernier accès</th>
-                                    </tr>
-                                ';
-
-            $first_access = (isset($course->first_access)) ? $course->first_access : "Non enregistré";
-            $last_access = (isset($course->last_access)) ? $course->last_access : "Non enregistré";
-
-            $second_table .= '      <tr>
-                                        <td style="text-align: center; vertical-align: middle;">'.$course_total_duration.'</td>
-                                        <td style="text-align: center; vertical-align: middle;">'.$first_access.'</td>
-                                        <td style="text-align: center; vertical-align: middle;">'.$last_access.'</td>
-                                    </tr>
-                                    </table>';
-
-            $pdf->writeHTMLCell(0, 0, '', '', $second_table, 0, 1, 0, true, '', true);
-            $pdf->writeHTML('<br>');
-
-            if ($first) {
-                $first = false;
-            };
         }
-
 
         if (empty($records)) {
             $pdf->writeHTML('<div><b>Aucune activité sur cette période.</b></div>');
         }
-
-
 
         $filename = tgenerate_file_name($user->firstname . ' ' . $user->lastname, date('d/m/Y', $start_time), date('d/m/Y', $end_time));
         $returnstr = $pdf->Output($filename . '.pdf', 'S');
 
         return $this->write_new_file($returnstr, $contextid, $filename, $user, $requestorid);
     }
+
 
     private function get_course_fullname($course_id) {
         return self::$COURSES_CACHE[$course_id] ?? self::load_course_fullname($course_id);
@@ -354,9 +428,9 @@ class generate_time_report extends \core\task\adhoc_task {
 
             // If ressource not existing for th day, create it
             if (!isset($ressources[$current_ressource])) {
-                $ressources[$current_ressource] = $timefortheressource;
+                $ressources[$current_ressource] = [$timefortheressource, $item->courseid];
             } else if ($timefortheressource == 0) {
-                $timefortheressource = $ressources[$current_ressource];
+                $timefortheressource = $ressources[$current_ressource][0];
             }
 
             // Last iteration.
@@ -387,16 +461,16 @@ class generate_time_report extends \core\task\adhoc_task {
             } else if ($nextval->logtimecreated != $currentday->logtimecreated) {
                 // Last iteration of the day.
                 $timefortheday = $timefortheday + $borrowedtime;
-                $ressources[$current_ressource] = $timefortheressource + $borrowedtime;
+                $ressources[$current_ressource][0] = $timefortheressource + $borrowedtime;
                 $timefortheressource = 0;
                 $sent = true;
             }
 
             if (($current_ressource != $nextval->fullname) && !$sent) {
                 if ($nextval->logtimecreated != $currentday->logtimecreated) {
-                    $ressources[$current_ressource] = $timefortheressource + $borrowedtime;
+                    $ressources[$current_ressource][0] = $timefortheressource + $borrowedtime;
                 } else {
-                    $ressources[$current_ressource] = $timefortheressource;
+                    $ressources[$current_ressource][0] = $timefortheressource;
                 }
                 $timefortheressource = 0;
             }

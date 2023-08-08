@@ -50,3 +50,4 @@ $string['settings:available_on_admins'] = 'Available on admin profiles';
 $string['settings:available_on_admins_desc'] = 'Make the report available on admin profiles.';
 $string['settings:dbdriver'] = 'Database driver';
 $string['settings:dbdriver_desc'] = 'Database driver selection.';
+$string['settings:calculation_rule_text'] = "Define used text to explain how the report is generated. Use {i} and {b} to symbolise 'idletime' and 'borrowedtime' variables.";

@@ -29,7 +29,6 @@ require_once(dirname(__FILE__) . '/../../locallib.php');
 require_once(dirname(__FILE__) . '/../../lib.php');
 require_once($CFG->libdir . '/pdflib.php');
 require_once(dirname(__FILE__) . '/../pdf.php');
-$is_detail_enabled = optional_param('is_detail_enabled', false, PARAM_BOOL);
 
 require_login();
 
@@ -77,7 +76,7 @@ class generate_time_report extends \core\task\adhoc_task {
             $results_csv = get_log_records($user->id, $startdate, $enddate);
             $results = tget_user_log_records($data->userid, $startdate, $enddate);
             $csvdata = $this->prepare_results($user, $results_csv);
-            $this->generate_pdf($results, $user, $data->requestorid, $data->contextid, $startdate, $enddate, $csvdata);
+            $this->generate_pdf($results, $user, $data->requestorid, $data->contextid, $startdate, $enddate, $csvdata, $data->is_detail_enabled);
             //$this->create_csv($user, $data->requestorid, $csvdata, $data->contextid, $startdate, $enddate);
         }
     }
@@ -87,8 +86,15 @@ class generate_time_report extends \core\task\adhoc_task {
         $pdf->writeHTML('<div>Utilisateur : ' . $user->firstname . ' ' . $user->lastname . '</div>');
     }
 
-    private function generate_pdf($records, $user, $requestorid, $contextid, $start_time, $end_time, $csvdata) {
-        global $SITE, $USER, $is_detail_enabled, $DB;
+    private function generate_pdf($records, $user, $requestorid, $contextid, $start_time, $end_time, $csvdata, $is_detail_enabled) {
+        global $SITE, $USER, $DB;
+
+        $idletime = get_config('tool_time_report', 'idletime') / MINSECS;
+        $borrowedtime = get_config('tool_time_report', 'borrowedtime') / MINSECS;
+        $calculation_rule_text = get_config('tool_time_report', 'calculation_rule_text');
+        $calculation_rule_text = str_replace('{i}', "<b>$idletime</b>", $calculation_rule_text);
+        $calculation_rule_text = str_replace('{b}', "<b>$borrowedtime</b>", $calculation_rule_text);
+
         $pdf = new \tool_time_report\PDF();
         $pdf->setPrintHeader(false);
         //$pdf->setHeaderData('https://static.uness.fr/img/UNESS_logo_200x80.png', 0, "", $user->firstname . ' ' . $user->lastname, array(0,64,255), array(0,64,128));
@@ -106,7 +112,7 @@ class generate_time_report extends \core\task\adhoc_task {
         // Write fake header on the first page.
         $pdf->writeHTML('<img src="https://static.uness.fr/img/UNESS_logo_200x80.png" width="100px" alt="Logo" />', false, false, true, false, 'R');
         $pdf->writeHTML("<h1>Rapport d'activité, Temps de connexion</h1>");
-        $pdf->writeHTML('<div>Généré le : ' . date('d/m/Y') . '</div><br>');
+        $pdf->writeHTML('<div>Généré le : ' . date('d/m/Y H:i') . '</div><br>');
         $pdf->writeHTML('<br><div>Plateforme : ' . $SITE->fullname . '</div>');
         $pdf->writeHTML('<div>Utilisateur : ' . $user->firstname . ' ' . $user->lastname . '</div>');
         $pdf->writeHTML('<div>Courriel : ' . $user->email . '</div>');
@@ -118,8 +124,10 @@ class generate_time_report extends \core\task\adhoc_task {
             . (($start_time) ? date('d/m/Y', $start_time) : 'plus ancien')
             . ' au '
             . (($end_time) ? date('d/m/Y', $end_time) : 'plus récent')
-            . ' - Temps de connexion total : ' . $this::format_seconds($this->totaltime) . '</div>'
+            . ' - Temps de connexion total : ' . $this::format_seconds($this->totaltime) . '</div><br />'
         );
+
+        $pdf->writeHTML($calculation_rule_text);
 
         // $records is containing a string when an error occurred.
         if (is_string($records)) {
@@ -204,7 +212,7 @@ class generate_time_report extends \core\task\adhoc_task {
 
         // Table 1.
         $first_table ='
-                        <h3>Tableau 1</h3>
+                        <h3>Synthèse des temps de connexion par jour</h3>
                         <table cellspacing="0" cellpadding="1" border="1" style="border-color:gray;">
                             <tr style="background-color:darkslategray;color:white;">
                                 <td style="text-align: center; vertical-align: middle;">Date</td>
@@ -248,13 +256,13 @@ class generate_time_report extends \core\task\adhoc_task {
 
         $first_table .= '</table>
                          <br>';
-        $pdf->writeHTMLCell(0, 0, '', '', $first_table, 0, 1, 0, true, '', true);
+            $pdf->writeHTMLCell(0, 0, '', '', $first_table, 0, 1, 0, true, '', true);
 
         if ($is_detail_enabled) {
             // Table 2
             $nb_row = 3;
             $current_category = '';
-            $second_table = '<h3>Tableau 2</h3>
+            $second_table = '<h3>Détail des temps de connexion par cours</h3>
                              <table cellspacing="0" cellpadding="1" border="1" style="border-color:gray;">
                              <tr style="background-color:darkslategray;color:white;">
                                 <th style="text-align: center; vertical-align: middle;">Catégorie</th>

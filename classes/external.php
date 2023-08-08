@@ -97,6 +97,7 @@ class external extends external_api {
             'userid' => $serialiseddata['userid'],
             'start' => $serialiseddata['start'],
             'end' => $serialiseddata['end'],
+            'is_detail_enabled' => $serialiseddata['is_detail_enabled'],
             'contextid' => $serialiseddata['contextid']
         ));
         \core\task\manager::queue_adhoc_task($adhocktask, true);

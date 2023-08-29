@@ -29,5 +29,3 @@ $plugin->requires = 2018050800;
 $plugin->component = 'tool_time_report';
 $plugin->release = '1.1';
 $plugin->maturity  = MATURITY_STABLE;
-
-//TODO: CHECK CODE BEFORE PR

@@ -1,34 +1,10 @@
 <?php
-// This file is part of Moodle - http://moodle.org/
-//
-// Moodle is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-//
-// Moodle is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-//
-// You should have received a copy of the GNU General Public License
-// along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
-
-/**
- * Time Report tool plugin's local lib.
- *
- * @package   tool_time_report
- * @copyright 2023 Pierre Duverneix - Fondation UNIT
- * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
- */
-
 
 defined('MOODLE_INTERNAL') || die();
 
-
-function tget_user_log_records(int $user_id, int $start_time = 0, int $end_time = 0) {
+function get_user_log_records_pdf(int $user_id, int $start_time = 0, int $end_time = 0) {
     global $DB;
-    $logstore_name = tget_enabled_logstore_name();
+    $logstore_name = get_enabled_logstore_name_pdf();
 
     switch ($logstore_name) {
         case 'logstore_database':
@@ -106,31 +82,17 @@ function tget_user_log_records(int $user_id, int $start_time = 0, int $end_time 
  * @return string
  * @throws coding_exception
  */
-function tgenerate_file_name($username, $start_time, $end_time) {
+function generate_pdf_file_name($username, $start_time, $end_time) {
     if (!$username) throw new \coding_exception('Missing username');
 
     $start_t = str_replace('/', '-', $start_time);
     $end_t = str_replace('/', '-', $end_time);
 
-    $file_name = 'justificatif-activite_' . tto_snake_case($username) . '_';
+    $file_name = 'justificatif-activite_' . to_snake_case_pdf($username) . '_';
     $file_name .= ($start_time) ? $start_t . '_' : 'earlier-';
     $file_name .= ($end_time) ? $end_t : 'latest';
 
     return $file_name;
-}
-
-/**
- * Adds a hyphen between month and year.
- * By: Pierre Duverneix
- * @param  string $str Date string
- * @param  string $num Position of the cut off
- * @return string
- */
-function tformat_readable_date($str, $num) {
-    $output[0] = substr($str, 0, $num);
-    $output[1] = '-';
-    $output[2] = substr($str, $num, strlen($str));
-    return implode($output);
 }
 
 /**
@@ -140,7 +102,7 @@ function tformat_readable_date($str, $num) {
  * @param  string $glue (optional)
  * @return string
  */
-function tto_snake_case($str, $glue = '_') {
+function to_snake_case_pdf($str, $glue = '_') {
     $str = preg_replace('/\s+/', '', $str);
     return ltrim(
         preg_replace_callback('/[A-Z]/', function ($matches) use ($glue) {

@@ -36,7 +36,8 @@ use core\message\message;
 use moodle_url;
 
 use pdf;
-use tool_useractivityreport\service\course_service;
+use tool_time_report\service\course_service;
+use tool_time_report;
 use function Complex\sec;
 
 class generate_time_report extends \core\task\adhoc_task {
@@ -76,7 +77,7 @@ class generate_time_report extends \core\task\adhoc_task {
 
             $user = $DB->get_record('user', array('id' => $data->userid), '*', MUST_EXIST);
             $results_csv = get_log_records($user->id, $startdate, $enddate);
-            $results = tget_user_log_records($data->userid, $startdate, $enddate);
+            $results = get_user_log_records_pdf($data->userid, $startdate, $enddate);
             $csvdata = $this->prepare_results($user, $results_csv);
             $this->generate_pdf($results, $user, $data->requestorid, $data->contextid, $startdate, $enddate, $csvdata, $data->is_detail_enabled);
         }
@@ -88,7 +89,7 @@ class generate_time_report extends \core\task\adhoc_task {
      * @param $user
      * @return string
      */
-    private function change_page_pdf ($pdf, $user, $second_table) {
+    private function set_detail_pages_header ($pdf, $user, $second_table) {
         return $second_table . '<h3>Détail des temps de connexion par cours</h3>
                          <div>Utilisateur : ' . $user->firstname . ' ' . $user->lastname . '</div>
                          <br />
@@ -145,7 +146,7 @@ class generate_time_report extends \core\task\adhoc_task {
         $user_institution = !isset($user->institution) ? $user->institution : "Non-renseigné";
         $user_department = !isset($user->department) ? $user->department : "Non-renseigné";
 
-        // Write fake header on the first page.
+        // Write fake header on the is_first page.
         $pdf->writeHTML('<img src="https://static.uness.fr/img/UNESS_logo_200x80.png" width="100px" alt="Logo" />', false, false, true, false, 'R');
         $pdf->writeHTML("<h1>Rapport d'activité, Temps de connexion</h1>");
         $pdf->writeHTML('<div>Généré le : ' . date('d/m/Y H:i') . '</div><br>');
@@ -167,7 +168,7 @@ class generate_time_report extends \core\task\adhoc_task {
         // $records is containing a string when an error occurred.
         if (is_string($records)) {
             $pdf->writeHTML('<div>' . $records . '</div>');
-            $pdf->Output(tgenerate_file_name($user->firstname . ' ' . $user->lastname, date('d/m/Y', $start_time), date('d/m/Y', $end_time)) . '.pdf', 'D');
+            $pdf->Output(generate_pdf_file_name($user->firstname . ' ' . $user->lastname, date('d/m/Y', $start_time), date('d/m/Y', $end_time)) . '.pdf', 'D');
             return;
         }
 
@@ -310,7 +311,7 @@ class generate_time_report extends \core\task\adhoc_task {
                              </tr>
                              </table>'; // <br /> not supported
 
-            $first = true;
+            $is_first = true;
             $pdf->AddPage();
 
             foreach ($csv_categories as $grouped_courses) {
@@ -334,7 +335,7 @@ class generate_time_report extends \core\task\adhoc_task {
                 if ($nb_row > 36) {
                     $nb_row = 6;
                     $pdf->AddPage();
-                    $second_table .= $this->change_page_pdf($pdf, $user, $second_table);
+                    $second_table .= $this->set_detail_pages_header($pdf, $user, $second_table);
                 }
 
                 // Add category heading
@@ -354,7 +355,7 @@ class generate_time_report extends \core\task\adhoc_task {
                         if ($nb_row > 39) {
                             $nb_row = 9;
                             $pdf->AddPage();
-                            $second_table .= $this->change_page_pdf($pdf, $user, $second_table);
+                            $second_table .= $this->set_detail_pages_header($pdf, $user, $second_table);
                             $second_table .= '
                                             <p></p>
                                             <table cellspacing="0" cellpadding="1" border="1" style="border-color:gray;">
@@ -385,8 +386,8 @@ class generate_time_report extends \core\task\adhoc_task {
                         $nb_row += 1;
                         $pdf->writeHTMLCell(0, 0, '', '', $second_table, 0, 1, 0, true, '', true);
 
-                        if ($first) {
-                            $first = false;
+                        if ($is_first) {
+                            $is_first = false;
                         };
 
                         $second_table = '';
@@ -401,7 +402,7 @@ class generate_time_report extends \core\task\adhoc_task {
             $pdf->writeHTML('<div><b>Aucune activité sur cette période.</b></div>');
         }
 
-        $filename = tgenerate_file_name($user->firstname . ' ' . $user->lastname, date('d/m/Y', $start_time), date('d/m/Y', $end_time));
+        $filename = generate_pdf_file_name($user->firstname . ' ' . $user->lastname, date('d/m/Y', $start_time), date('d/m/Y', $end_time));
         $returnstr = $pdf->Output($filename . '.pdf', 'S');
 
         return $this->write_new_file($returnstr, $contextid, $filename, $user, $requestorid);
@@ -451,35 +452,35 @@ class generate_time_report extends \core\task\adhoc_task {
         $timefortheday = 0;
         $i = 0;
         $length = count($data);
-        $timefortheressource = 0;
+        $timefortheresource = 0;
         $ressources = [];
 
         $out = array();
         $totaltime = 0;
-        $sent = false;
+        $is_sent = false;
 
         for ($i; $i < $length; $i++) {
             $item = array_values($data)[$i];
             $nextval = self::get_nextval($data, $i);
-            $current_ressource = $item->fullname;
+            $current_resource_fullname = $item->fullname;
 
             // If the item log time is different than the current day time, we move forward.
-            if ($item->logtimecreated != $currentday->logtimecreated) {
+            if ($item->logtimecreated !== $currentday->logtimecreated) {
                 $currentday = $item;
                 $timefortheday = 0;
-                $timefortheressource = 0;
+                $timefortheresource = 0;
                 $ressources = [];
             }
 
             // If ressource not existing for th day, create it
-            if (!isset($ressources[$current_ressource])) {
-                $ressources[$current_ressource] = [$timefortheressource, $item->courseid];
-            } else if ($timefortheressource == 0) {
-                $timefortheressource = $ressources[$current_ressource][0];
+            if (!isset($ressources[$current_resource_fullname])) {
+                $ressources[$current_resource_fullname] = [$timefortheresource, $item->courseid];
+            } else if ($timefortheresource === 0) {
+                $timefortheresource = $ressources[$current_resource_fullname][0];
             }
 
             // Last iteration.
-            if ($item->id == $nextval->id) {
+            if ($item->id === $nextval->id) {
                 $totaltime = $totaltime + $timefortheday;
                 $out = self::push_result($out, $item->timecreated, $timefortheday, $ressources, $item->courseid);
                 break;
@@ -492,12 +493,12 @@ class generate_time_report extends \core\task\adhoc_task {
 
                 if (intval($timedelta / MINSECS) > $idletime) {
                     $timefortheday = $timefortheday + $borrowedtime;
-                    $timefortheressource = $timefortheressource + $borrowedtime;
+                    $timefortheresource = $timefortheresource + $borrowedtime;
                 } else {
                     $tmpdaytime = $timefortheday + $nextvaltimecreated - $itemtimecreated;
-                    $tmpressourcedaytime = $timefortheressource + $nextvaltimecreated - $itemtimecreated;
-                    if ($tmpressourcedaytime >= intval($timefortheressource + $idletime)) {
-                        $timefortheressource = $tmpressourcedaytime;
+                    $tmpressourcedaytime = $timefortheresource + $nextvaltimecreated - $itemtimecreated;
+                    if ($tmpressourcedaytime >= intval($timefortheresource + $idletime)) {
+                        $timefortheresource = $tmpressourcedaytime;
                     }
 
                     if ($tmpdaytime >= intval($timefortheday + $idletime)) {
@@ -508,19 +509,19 @@ class generate_time_report extends \core\task\adhoc_task {
 
                 // Last iteration of the day.
                 $timefortheday = $timefortheday + $borrowedtime;
-                $ressources[$current_ressource][0] = $timefortheressource + $borrowedtime;
-                $timefortheressource = 0;
-                $sent = true;
+                $ressources[$current_resource_fullname][0] = $timefortheresource + $borrowedtime;
+                $timefortheresource = 0;
+                $is_sent = true;
             }
 
-            if (($current_ressource != $nextval->fullname) && !$sent) {
+            if (($current_resource_fullname !== $nextval->fullname) && !$is_sent) {
                 if ($nextval->logtimecreated != $currentday->logtimecreated) {
-                    $ressources[$current_ressource][0] = $timefortheressource + $borrowedtime;
+                    $ressources[$current_resource_fullname][0] = $timefortheresource + $borrowedtime;
                 } else {
-                    $ressources[$current_ressource][0] = $timefortheressource;
+                    $ressources[$current_resource_fullname][0] = $timefortheresource;
                 }
 
-                $timefortheressource = 0;
+                $timefortheresource = 0;
             }
 
             if (($timefortheday > 0 && isset($nextval) && $nextval->logtimecreated != $currentday->logtimecreated)
@@ -528,7 +529,7 @@ class generate_time_report extends \core\task\adhoc_task {
                 $totaltime = $totaltime + $timefortheday;
 
                 $out = self::push_result($out, $item->timecreated, $timefortheday, $ressources, $item->courseid);
-                $sent = false;
+                $is_sent = false;
             }
         }
 
@@ -549,10 +550,10 @@ class generate_time_report extends \core\task\adhoc_task {
         return array_values($data)[$iteration + 1];
     }
 
-    private static function push_result($items, $itemtimecreated, $timefortheday, $ressources, $course_id) {
+    private static function push_result($items, $itemtimecreated, $timefortheday, $resources, $course_id) {
         $date = date('d/m/Y', $itemtimecreated);
         $seconds = self::format_seconds($timefortheday);
-        array_push($items, array($date, $seconds, $ressources, $course_id));
+        array_push($items, array($date, $seconds, $resources, $course_id));
         return $items;
     }
 

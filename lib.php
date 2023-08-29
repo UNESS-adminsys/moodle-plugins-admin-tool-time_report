@@ -27,69 +27,7 @@ defined('MOODLE_INTERNAL') || die();
 
 use core_user\output\myprofile\tree;
 
-/**
- * Add nodes to myprofile page.
- *
- * @param tree $tree Tree object
- * @param stdClass $user User object
- * @param bool $iscurrentuser
- * @param stdClass $course Course object
- * @return bool
- * @throws coding_exception
- * @throws dml_exception
- * @throws moodle_exception
- */
-
-function ttool_useractivityreport_myprofile_navigation(core_user\output\myprofile\tree $tree, $user, $is_self_profile, $course) {
-    // Check the user is on their own profile & logstore is enabled.
-    if (!$is_self_profile || !tis_logstore_enabled()) return false;
-
-    // Create a new category or get the existing one.
-    if (!array_key_exists('reports', $tree->__get('categories'))) {
-        $category_name = get_string('useractivityreport', 'tool_useractivityreport');
-        $category = new core_user\output\myprofile\category('useractivityreport', $category_name, 'useractivityreport');
-        $tree->add_category($category);
-    } else {
-        $category = $tree->__get('categories')['reports'];
-    }
-
-    $node = new core_user\output\myprofile\node(
-        'reports',
-        'tool_useractivityreport',
-        get_string('useractivityreport', 'tool_useractivityreport'),
-        null,
-        new moodle_url('/admin/tool/useractivityreport/view.php')
-    );
-
-    $category->add_node($node);
-    return true;
-}
-
-/**
- * Check the logstore is enabled before setting variables
- * @return bool
- * @throws dml_exception
- */
-function tis_logstore_enabled() {
-    $enabled_log_stores = explode(',', get_config('tool_log', 'enabled_stores'));
-    if (empty($enabled_log_stores)) return false;
-
-    // Init manager.
-    $manager = new \tool_log\log\manager();
-
-    // Init standard or database logstore (others are not supported for this plugin).
-    if (in_array('logstore_standard', $enabled_log_stores)) {
-        $store = new \logstore_standard\log\store($manager);
-        return (bool) $store->get_internal_log_table_name();
-    } elseif (in_array('logstore_database', $enabled_log_stores)) {
-        $store = new \logstore_database\log\store($manager);
-        return (bool) $store->get_extdb();
-    }
-
-    return false;
-}
-
-function tget_enabled_logstore_name() {
+function get_enabled_logstore_name_pdf() {
     $enabled_log_stores = explode(',', get_config('tool_log', 'enabled_stores'));
     return (!empty($enabled_log_stores)) ? $enabled_log_stores[0] : false;
 }
@@ -137,7 +75,6 @@ function tool_time_report_myprofile_navigation(core_user\output\myprofile\tree $
 
     return true;
 }
-
 
 /**
  * Serve the files from the tool_time_report file areas

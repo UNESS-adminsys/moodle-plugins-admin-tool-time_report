@@ -79,6 +79,22 @@ if ($hassiteconfig) {
             $defaultdbdriver,
             $drivers)
         );
+
+        $settingspage->add(new admin_setting_configcheckbox(
+                        'tool_time_report/use_view_table',
+                        'Utilisé une view pour les logs',
+                        'S\'il y à plusieurs table sql de logs, permet de prendre les données dans une vue sql ',
+                        '0'
+                )
+        );
+
+        $settingspage->add(new admin_setting_configtext(
+                        'tool_time_report/name_view_table',
+                        'Nom de la vue',
+                        'Nom de la vue sql pour les logs',
+                        ''
+                )
+        );
     }
 
     $ADMIN->add('reports', $settingspage);

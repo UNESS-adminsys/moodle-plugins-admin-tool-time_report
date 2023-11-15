@@ -4,8 +4,6 @@ namespace tool_time_report;
 
 require_once($CFG->libdir . '/pdflib.php');
 
-$userid = $_GET['userid'];
-
 class PDF extends \pdf {
 
     // Page footer

@@ -227,9 +227,10 @@ function get_log_records($userid, $startdate, $enddate) {
                 {logstore_standard_log}.courseid,
                 DATE(to_timestamp({logstore_standard_log}.timecreated)) AS datecreated,
                 DATE(to_timestamp({logstore_standard_log}.timecreated)) AS logtimecreated,
-                {logstore_standard_log}.userid, {user}.email, {course}.fullname
+                {logstore_standard_log}.userid, {user}.email, {course}.fullname, {course}.category, {course_categories}.name, {course_categories}.sortorder as category_sortorder, {course}.sortorder as course_sortorder
                 FROM {logstore_standard_log}
-                INNER JOIN {course} ON {logstore_standard_log}.courseid = {course}.id
+                INNER JOIN {course} ON {logstore_standard_log}.courseid = {course}.id 
+                INNER JOIN {course_categories} ON {course_categories}.id = {course}.category 
                 LEFT OUTER JOIN {user} ON {logstore_standard_log}.userid = {user}.id
                 WHERE {logstore_standard_log}.userid = ?
                 AND ({logstore_standard_log}.timecreated BETWEEN ? AND ?)

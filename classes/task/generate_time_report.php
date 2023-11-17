@@ -85,13 +85,25 @@ class generate_time_report extends \core\task\adhoc_task {
         }
     }
 
+    private function set_base_pages_header($user): string {
+        return '<h3>Détail des temps de connexion par cours</h3>
+                <div>Utilisateur : ' . $user->firstname . ' ' . $user->lastname . '</div>
+                <br />
+                <table cellspacing="0" cellpadding="1" border="1" style="border-color:gray;">
+                    <tr style="background-color:darkslategray;color:white;">
+                        <td style="text-align: center; vertical-align: middle;">Date</td>
+                        <td style="text-align: center; vertical-align: middle;">Durée</td>
+                    </tr>';
+
+    }
+
     /**
      * Insert header if page break inside generate_pdf()
      * @param $pdf
      * @param $user
      * @return string
      */
-    private function set_detail_pages_header (\pdf $pdf, $user): string {
+    private function set_detail_pages_header($user): string {
         return '<h3>Détail des temps de connexion par cours</h3>
                          <div>Utilisateur : ' . $user->firstname . ' ' . $user->lastname . '</div>
                          <br />
@@ -114,6 +126,11 @@ class generate_time_report extends \core\task\adhoc_task {
                          </table>';
     }
 
+    /**
+     * Init daily activities
+     * @param array $records
+     * @return array
+     */
     private function prepare_daily_activities(array $records): array {
         $daily_activity = [];
 
@@ -173,7 +190,6 @@ class generate_time_report extends \core\task\adhoc_task {
      * @throws \dml_exception
      */
     private function prepare_csv_categories(array $csv_courses): array {
-        global $DB;
         $csv_categories = [];
 
         // Format array by categories ([category]->courses)
@@ -187,7 +203,7 @@ class generate_time_report extends \core\task\adhoc_task {
             $csv_categories[$course->category_id][$key] = $course;
         }
 
-        // Sorting categories
+        // sorting categories by their displayed order
         uasort($csv_categories, function ($a, $b) {
             if ($a[2] > $b[2]) {
                 return 1;
@@ -201,8 +217,8 @@ class generate_time_report extends \core\task\adhoc_task {
         return $csv_categories;
     }
 
-    private function print_base_body(array $records, array $csvdata, array $csv_courses, \pdf $pdf): void {
-        // Table 1.
+    private function print_base_body(array $records, array $csvdata, array $csv_courses, \pdf $pdf, $user): void {
+        $nb_rows = 15;
         $first_table =' <h3>Synthèse des temps de connexion par jour</h3>
                         <table cellspacing="0" cellpadding="1" border="1" style="border-color:gray;">
                             <tr style="background-color:darkslategray;color:white;">
@@ -223,26 +239,33 @@ class generate_time_report extends \core\task\adhoc_task {
             }
 
             if (isset($total_duration) && $total_duration != '00:00:00') {
-                $first_table .= ' <tr>
-                                    <td style="text-align: center; vertical-align: middle;">' . $datetime->format('d/m/Y') . '</td>
-                                    <td style="text-align: center; vertical-align: middle;">' . $total_duration . '   </td>
-                                  </tr>';
+                if ($nb_rows < 39) {
+                    $first_table .= ' <tr>
+                                        <td style="text-align: center; vertical-align: middle;">' . $datetime->format('d/m/Y') . '</td>
+                                        <td style="text-align: center; vertical-align: middle;">' . $total_duration . '   </td>
+                                      </tr>';
 
-                foreach ($date_logs as $log) {
-                    if (in_array($log->target, ['course', 'course_module'])) {
-                        $course_fullname = $this->get_course_fullname($log->courseid);
-                        if (!isset($csv_courses[$course_fullname]->first_access)) {
-                            $csv_courses[$course_fullname]->first_access = date('d/m/Y à H:i', $log->timecreated);
-                        } else {
-                            $csv_courses[$course_fullname]->last_access = date('d/m/Y à H:i', $log->timecreated);
+                    $nb_rows += 1;
+
+                    foreach ($date_logs as $log) {
+                        if (in_array($log->target, ['course', 'course_module'])) {
+                            $course_fullname = $this->get_course_fullname($log->courseid);
+                            if (!isset($csv_courses[$course_fullname]->first_access)) {
+                                $csv_courses[$course_fullname]->first_access = date('d/m/Y à H:i', $log->timecreated);
+                            } else {
+                                $csv_courses[$course_fullname]->last_access = date('d/m/Y à H:i', $log->timecreated);
+                            }
                         }
                     }
+                } else {
+                    $first_table .= '</table><br>';
+                    $pdf->writeHTMLCell(0, 0, '', '', $first_table, 0, 1, 0);
+                    $pdf->AddPage();
+                    $first_table = $this->set_base_pages_header($user);
+                    $nb_rows = 5;
                 }
             }
         }
-
-        $first_table .= '</table><br>';
-        $pdf->writeHTMLCell(0, 0, '', '', $first_table, 0, 1, 0, true, '', true);
     }
 
     /**
@@ -254,8 +277,8 @@ class generate_time_report extends \core\task\adhoc_task {
      * @return void
      * @throws \dml_exception
      */
-    private function print_detailled_body(\pdf $pdf, int $nb_row, array $csv_categories, bool $is_first): void {
-        global $USER;
+    private function print_detailled_body(\pdf $pdf, int $nb_row, array $csv_categories, $user): void {
+        $is_first = true;
 
         foreach ($csv_categories as $grouped_courses) {
             $sorted_courses = $grouped_courses;
@@ -278,7 +301,7 @@ class generate_time_report extends \core\task\adhoc_task {
             if ($nb_row > 36) {
                 $nb_row = 6;
                 $pdf->AddPage();
-                $second_table = $this->set_detail_pages_header($pdf, $USER);
+                $second_table = $this->set_detail_pages_header($user);
                 // Add category heading
                 $second_table .= '
                                             <p></p>
@@ -304,10 +327,11 @@ class generate_time_report extends \core\task\adhoc_task {
                 $course_total_duration = self::format_seconds($course->course_time_data);
 
                 if ($course_total_duration != '00:00:00') {
+                    // Check if enought space on current page
                     if ($nb_row > 39) {
                         $nb_row = 9;
                         $pdf->AddPage();
-                        $second_table .= $this->set_detail_pages_header($pdf, $USER, $second_table);
+                        $second_table .= $this->set_detail_pages_header($user);
                         $second_table .= '
                                             <p></p>
                                             <table cellspacing="0" cellpadding="1" border="1" style="border-color:gray;">
@@ -332,7 +356,7 @@ class generate_time_report extends \core\task\adhoc_task {
                                                 </table>';
 
                     $nb_row += 1;
-                    $pdf->writeHTMLCell(0, 0, '', '', $second_table, 0, 1, 0, true, '', true);
+                    $pdf->writeHTMLCell(0, 0, '', '', $second_table, 0, 1, 0);
 
                     if ($is_first) {
                         $is_first = false;
@@ -342,7 +366,6 @@ class generate_time_report extends \core\task\adhoc_task {
                 }
             }
 
-            $second_table = '';
             $sorted_courses = [];
         }
     }
@@ -409,7 +432,7 @@ class generate_time_report extends \core\task\adhoc_task {
 
         $pdf->writeHTML('<br>');
 
-        // Prepare daily spent time.
+        // prepare daily spent time.
         $daily_activity = $this->prepare_daily_activities($records);
 
         if ($is_detail_enabled) {
@@ -417,11 +440,9 @@ class generate_time_report extends \core\task\adhoc_task {
             $csv_categories = $this->prepare_csv_categories($csv_courses);
         }
 
-        $this->print_base_body($records, $csvdata, $csv_courses ?? [], $pdf);
+        $this->print_base_body($records, array_merge($csvdata, $csvdata), $csv_courses ?? [], $pdf, $user);
 
         if ($is_detail_enabled) {
-
-            // Table 2
             $nb_row = 3;
             $second_table_heading = '<h3>Détail des temps de connexion par cours</h3>
                              <div>Utilisateur : ' . $user->firstname . ' ' . $user->lastname . '</div>
@@ -440,12 +461,10 @@ class generate_time_report extends \core\task\adhoc_task {
                              <tr>
                                 <th style="text-align: center; vertical-align: middle;">Durée</th>
                              </tr>
-                             </table>'; // <br /> not supported
+                             </table>'; // <br /> not supported here
 
-            $is_first = true;
-            $pdf->AddPage();
-            $pdf->writeHTMLCell(0, 0, '', '', $second_table_heading, 0, 1, 0, true, '', true);
-            $this->print_detailled_body($pdf, $nb_row, $csv_categories, $is_first);
+            $pdf->writeHTMLCell(0, 0, '', '', $second_table_heading, 0, 1, 0);
+            $this->print_detailled_body($pdf, $nb_row, $csv_categories, $user);
         }
 
         if (empty($records)) {

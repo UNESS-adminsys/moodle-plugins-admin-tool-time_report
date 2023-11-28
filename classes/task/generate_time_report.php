@@ -42,23 +42,27 @@ use tool_time_report\service\course_service;
 use tool_time_report;
 use function Complex\sec;
 
-class generate_time_report extends \core\task\adhoc_task {
+class generate_time_report extends \core\task\adhoc_task
+{
 
     private static $COURSES_CACHE = [];
     public $totaltime = 0;
 
-    public function set_total_time($totaltime) {
+    public function set_total_time($totaltime)
+    {
         $this->totaltime = $totaltime;
     }
 
-    public function get_total_time() {
+    public function get_total_time()
+    {
         return $this->totaltime;
     }
 
     /**
      * Execute the task.
      */
-    public function execute() {
+    public function execute()
+    {
         global $DB;
 
         $data = $this->get_custom_data();
@@ -85,7 +89,8 @@ class generate_time_report extends \core\task\adhoc_task {
         }
     }
 
-    private function set_base_pages_header($user): string {
+    private function set_base_pages_header($user): string
+    {
         return '<h3>Détail des temps de connexion par cours</h3>
                 <div>Utilisateur : ' . $user->firstname . ' ' . $user->lastname . '</div>
                 <br />
@@ -103,7 +108,8 @@ class generate_time_report extends \core\task\adhoc_task {
      * @param $user
      * @return string
      */
-    private function set_detail_pages_header($user): string {
+    private function set_detail_pages_header($user): string
+    {
         return '<h3>Détail des temps de connexion par cours</h3>
                          <div>Utilisateur : ' . $user->firstname . ' ' . $user->lastname . '</div>
                          <br />
@@ -131,7 +137,8 @@ class generate_time_report extends \core\task\adhoc_task {
      * @param array $records
      * @return array
      */
-    private function prepare_daily_activities(array $records): array {
+    private function prepare_daily_activities(array $records): array
+    {
         $daily_activity = [];
 
         foreach ($records as $date => $data) {
@@ -157,7 +164,8 @@ class generate_time_report extends \core\task\adhoc_task {
      * @param $csvdata
      * @return array
      */
-    private function prepare_csv_courses(array $csvdata): array {
+    private function prepare_csv_courses(array $csvdata): array
+    {
         // Building courses array based on csvdata for efficient sorting
         $csv_courses = [];
 
@@ -189,7 +197,8 @@ class generate_time_report extends \core\task\adhoc_task {
      * @return array
      * @throws \dml_exception
      */
-    private function prepare_csv_categories(array $csv_courses): array {
+    private function prepare_csv_categories(array $csv_courses): array
+    {
         $csv_categories = [];
 
         // Format array by categories ([category]->courses)
@@ -219,7 +228,7 @@ class generate_time_report extends \core\task\adhoc_task {
 
     private function print_base_body(array $records, array $csvdata, array $csv_courses, \pdf $pdf, $user): void {
         $nb_rows = 15;
-        $first_table =' <h3>Synthèse des temps de connexion par jour</h3>
+        $first_table = ' <h3>Synthèse des temps de connexion par jour</h3>
                         <table cellspacing="0" cellpadding="1" border="1" style="border-color:gray;">
                             <tr style="background-color:darkslategray;color:white;">
                                 <td style="text-align: center; vertical-align: middle;">Date</td>
@@ -227,7 +236,7 @@ class generate_time_report extends \core\task\adhoc_task {
                             </tr>
                         ';
 
-        foreach ($records as $data) {
+        foreach ($records as $key=>$data) {
             $datetime = new \DateTime($data->date . ' 23:59:59.000000');
             $date_logs = json_decode($data->logs);
             $total_duration = '00:00:00';
@@ -239,212 +248,221 @@ class generate_time_report extends \core\task\adhoc_task {
             }
 
             if (isset($total_duration) && $total_duration != '00:00:00') {
-                if ($nb_rows < 39) {
-                    $first_table .= ' <tr>
-                                        <td style="text-align: center; vertical-align: middle;">' . $datetime->format('d/m/Y') . '</td>
-                                        <td style="text-align: center; vertical-align: middle;">' . $total_duration . '   </td>
-                                      </tr>';
-
-                    $nb_rows += 1;
-
-                    foreach ($date_logs as $log) {
-                        if (in_array($log->target, ['course', 'course_module'])) {
-                            $course_fullname = $this->get_course_fullname($log->courseid);
-                            if (!isset($csv_courses[$course_fullname]->first_access)) {
-                                $csv_courses[$course_fullname]->first_access = date('d/m/Y à H:i', $log->timecreated);
-                            } else {
-                                $csv_courses[$course_fullname]->last_access = date('d/m/Y à H:i', $log->timecreated);
-                            }
-                        }
-                    }
-                } else {
+                if ($nb_rows > 39 || ($data == array_key_last($records))) {
                     $first_table .= '</table><br>';
                     $pdf->writeHTMLCell(0, 0, '', '', $first_table, 0, 1, 0);
                     $pdf->AddPage();
                     $first_table = $this->set_base_pages_header($user);
-                    $nb_rows = 5;
+                    $nb_rows = 3;
+                }
+
+                $first_table .= ' <tr>
+                                        <td style="text-align: center; vertical-align: middle;">' . $datetime->format('d/m/Y') . '</td>
+                                        <td style="text-align: center; vertical-align: middle;">' . $total_duration . '   </td>
+                                      </tr>';
+
+                $nb_rows += 1;
+
+                foreach ($date_logs as $log) {
+                    if (in_array($log->target, ['course', 'course_module'])) {
+                        $course_fullname = $this->get_course_fullname($log->courseid);
+                        if (!isset($csv_courses[$course_fullname]->first_access)) {
+                            $csv_courses[$course_fullname]->first_access = date('d/m/Y à H:i', $log->timecreated);
+                        } else {
+                            $csv_courses[$course_fullname]->last_access = date('d/m/Y à H:i', $log->timecreated);
+                        }
+                    }
                 }
             }
         }
+
+        $first_table .= '</table><br>';
+        $pdf->writeHTMLCell(0, 0, '', '', $first_table, 0, 1, 0);
+        $pdf->AddPage();
     }
 
-    /**
-     * Print detailled report
-     * @param pdf $pdf
-     * @param int $nb_row
-     * @param array $csv_categories
-     * @param bool $is_first
-     * @return void
-     * @throws \dml_exception
-     */
-    private function print_detailled_body(\pdf $pdf, int $nb_row, array $csv_categories, $user): void {
-        $is_first = true;
 
-        foreach ($csv_categories as $grouped_courses) {
-            $sorted_courses = $grouped_courses;
-            for ($i = 0; $i < 3; $i++) {
-                unset($sorted_courses[$i]);
-            }
+/**
+ * Print detailled report
+ * @param pdf $pdf
+ * @param int $nb_row
+ * @param array $csv_categories
+ * @param bool $is_first
+ * @return void
+ * @throws \dml_exception
+ */
+private
+function print_detailled_body(\pdf $pdf, int $nb_row, array $csv_categories, $user): void
+{
+    $is_first = true;
 
-            // Sorting courses inside sorted categories
-            uasort($sorted_courses, function ($a, $b) {
-                if ($a->course_sortorder > $b->course_sortorder) {
-                    return 1;
-                } else if ($a->course_sortorder < $b->course_sortorder) {
-                    return -1;
-                } else {
-                    return 0;
-                }
-            });
+    foreach ($csv_categories as $grouped_courses) {
+        $sorted_courses = $grouped_courses;
+        for ($i = 0; $i < 3; $i++) {
+            unset($sorted_courses[$i]);
+        }
 
-            // Check if enought space on current page
-            if ($nb_row > 36) {
-                $nb_row = 6;
-                $pdf->AddPage();
-                $second_table = $this->set_detail_pages_header($user);
-                // Add category heading
-                $second_table .= '
-                                            <p></p>
-                                            <table cellspacing="0" cellpadding="1" border="1" style="border-color:gray;">
-                                            <tr style="background-color:darkslategray;color:white;">
-                                                <th style="text-align: center; vertical-align: middle;">' . $grouped_courses[1] . '</th>
-                                            </tr>
-                                            </table>';
+        // Sorting courses inside sorted categories
+        uasort($sorted_courses, function ($a, $b) {
+            if ($a->course_sortorder > $b->course_sortorder) {
+                return 1;
+            } else if ($a->course_sortorder < $b->course_sortorder) {
+                return -1;
             } else {
-                // Add category heading
-                $second_table = '
-                                            <p></p>
-                                            <table cellspacing="0" cellpadding="1" border="1" style="border-color:gray;">
-                                            <tr style="background-color:darkslategray;color:white;">
-                                                <th style="text-align: center; vertical-align: middle;">' . $grouped_courses[1] . '</th>
-                                            </tr>
-                                            </table>';
+                return 0;
             }
+        });
 
-            $nb_row += 3;
-
-            foreach ($sorted_courses as $course_name => $course) {
-                $course_total_duration = self::format_seconds($course->course_time_data);
-
-                if ($course_total_duration != '00:00:00') {
-                    // Check if enought space on current page
-                    if ($nb_row > 39) {
-                        $nb_row = 9;
-                        $pdf->AddPage();
-                        $second_table .= $this->set_detail_pages_header($user);
-                        $second_table .= '
+        // Check if enought space on current page
+        if ($nb_row > 36) {
+            $nb_row = 6;
+            $pdf->AddPage();
+            $second_table = $this->set_detail_pages_header($user);
+            // Add category heading
+            $second_table .= '
                                             <p></p>
                                             <table cellspacing="0" cellpadding="1" border="1" style="border-color:gray;">
                                             <tr style="background-color:darkslategray;color:white;">
                                                 <th style="text-align: center; vertical-align: middle;">' . $grouped_courses[1] . '</th>
                                             </tr>
                                             </table>';
-                    }
+        } else {
+            // Add category heading
+            $second_table = '
+                                            <p></p>
+                                            <table cellspacing="0" cellpadding="1" border="1" style="border-color:gray;">
+                                            <tr style="background-color:darkslategray;color:white;">
+                                                <th style="text-align: center; vertical-align: middle;">' . $grouped_courses[1] . '</th>
+                                            </tr>
+                                            </table>';
+        }
 
-                    $second_table .= '      <table cellspacing="0" cellpadding="1" border="1" style="border-color:gray;">
+        $nb_row += 3;
+
+        foreach ($sorted_courses as $course_name => $course) {
+            $course_total_duration = self::format_seconds($course->course_time_data);
+
+            if ($course_total_duration != '00:00:00') {
+                // Check if enought space on current page
+                if ($nb_row > 39) {
+                    $nb_row = 9;
+                    $pdf->AddPage();
+                    $second_table .= $this->set_detail_pages_header($user);
+                    $second_table .= '
+                                            <p></p>
+                                            <table cellspacing="0" cellpadding="1" border="1" style="border-color:gray;">
+                                            <tr style="background-color:darkslategray;color:white;">
+                                                <th style="text-align: center; vertical-align: middle;">' . $grouped_courses[1] . '</th>
+                                            </tr>
+                                            </table>';
+                }
+
+                $second_table .= '      <table cellspacing="0" cellpadding="1" border="1" style="border-color:gray;">
                                                     <tr style="background-color:lightslategray;color:white;">
                                                         <th style="text-align: center; vertical-align: middle;">' . $course_name . '</th>
                                                     </tr>
                                                 </table>
                                                 ';
 
-                    $nb_row += 1;
-                    $second_table .= '      <table cellspacing="0" cellpadding="1" border="1" style="border-color:gray;">
+                $nb_row += 1;
+                $second_table .= '      <table cellspacing="0" cellpadding="1" border="1" style="border-color:gray;">
                                                     <tr>
                                                         <td style="text-align: center; vertical-align: middle;">' . $course_total_duration . '</td>
                                                     </tr>
                                                 </table>';
 
-                    $nb_row += 1;
-                    $pdf->writeHTMLCell(0, 0, '', '', $second_table, 0, 1, 0);
+                $nb_row += 1;
+                $pdf->writeHTMLCell(0, 0, '', '', $second_table, 0, 1, 0);
 
-                    if ($is_first) {
-                        $is_first = false;
-                    };
+                if ($is_first) {
+                    $is_first = false;
+                };
 
-                    $second_table = '';
-                }
+                $second_table = '';
             }
-
-            $sorted_courses = [];
         }
+
+        $sorted_courses = [];
+    }
+}
+
+/**
+ * Generate pdf report
+ * @param $records
+ * @param $user
+ * @param $requestorid
+ * @param $contextid
+ * @param $start_time
+ * @param $end_time
+ * @param $csvdata
+ * @param $is_detail_enabled
+ * @return void
+ * @throws \coding_exception
+ * @throws \dml_exception
+ */
+private
+function generate_pdf(array $records, $user, int $requestorid, int $contextid, string $start_time, string $end_time, array $csvdata, bool $is_detail_enabled): void
+{
+    global $SITE;
+
+    $idletime = get_config('tool_time_report', 'idletime') / MINSECS;
+    $borrowedtime = get_config('tool_time_report', 'borrowedtime') / MINSECS;
+    $calculation_rule_text = get_config('tool_time_report', 'calculation_rule_text');
+    $calculation_rule_text = str_replace('{i}', "<b>$idletime</b>", $calculation_rule_text);
+    $calculation_rule_text = str_replace('{b}', "<b>$borrowedtime</b>", $calculation_rule_text);
+
+    $pdf = new \tool_time_report\PDF();
+    $pdf->setPrintHeader(false);
+    $pdf->getAliasNumPage();
+    $pdf->SetFont('Times', '', 12);
+    $pdf->setPrintFooter();
+    $pdf->SetAutoPageBreak(true, PDF_MARGIN_BOTTOM);
+    $pdf->AddPage();
+
+    $user_institution = !isset($user->institution) ? $user->institution : "Non-renseigné";
+    $user_department = !isset($user->department) ? $user->department : "Non-renseigné";
+
+    // Write fake header on the is_first page.
+    $pdf->writeHTML('<img src="https://static.uness.fr/img/UNESS_logo_200x80.png" width="100px" alt="Logo" />', false, false, true, false, 'R');
+    $pdf->writeHTML("<h1>Rapport d'activité, Temps de connexion</h1>");
+    $pdf->writeHTML('<div>Généré le : ' . date('d/m/Y H:i') . '</div><br>');
+    $pdf->writeHTML('<br><div>Plateforme : ' . $SITE->fullname . '</div>');
+    $pdf->writeHTML('<div>Utilisateur : ' . $user->firstname . ' ' . $user->lastname . '</div>');
+    $pdf->writeHTML('<div>Courriel : ' . $user->email . '</div>');
+    $pdf->writeHTML('<div>Université : ' . $user_institution . '</div>');
+    $pdf->writeHTML('<div>Spécialité : ' . $user_department . '</div>');
+    $pdf->writeHTML(
+        '<div>Période : du '
+        . (($start_time) ? date('d/m/Y', $start_time) : 'plus ancien')
+        . ' au '
+        . (($end_time) ? date('d/m/Y', $end_time) : 'plus récent')
+        . ' - Temps de connexion total : ' . $this::format_seconds($this->totaltime) . '</div><br />'
+    );
+
+    $pdf->writeHTML($calculation_rule_text);
+
+    // $records is containing a string when an error occurred.
+    if (is_string($records)) {
+        $pdf->writeHTML('<div>' . $records . '</div>');
+        $pdf->Output(generate_pdf_file_name($user->firstname . ' ' . $user->lastname, date('d/m/Y', $start_time), date('d/m/Y', $end_time)) . '.pdf', 'D');
+        return;
     }
 
-    /**
-     * Generate pdf report
-     * @param $records
-     * @param $user
-     * @param $requestorid
-     * @param $contextid
-     * @param $start_time
-     * @param $end_time
-     * @param $csvdata
-     * @param $is_detail_enabled
-     * @return void
-     * @throws \coding_exception
-     * @throws \dml_exception
-     */
-    private function generate_pdf(array $records, $user, int $requestorid, int $contextid, string $start_time, string $end_time, array $csvdata, bool $is_detail_enabled): void {
-        global $SITE;
+    $pdf->writeHTML('<br>');
 
-        $idletime = get_config('tool_time_report', 'idletime') / MINSECS;
-        $borrowedtime = get_config('tool_time_report', 'borrowedtime') / MINSECS;
-        $calculation_rule_text = get_config('tool_time_report', 'calculation_rule_text');
-        $calculation_rule_text = str_replace('{i}', "<b>$idletime</b>", $calculation_rule_text);
-        $calculation_rule_text = str_replace('{b}', "<b>$borrowedtime</b>", $calculation_rule_text);
+    // prepare daily spent time.
+    $daily_activity = $this->prepare_daily_activities($records);
 
-        $pdf = new \tool_time_report\PDF();
-        $pdf->setPrintHeader(false);
-        $pdf->getAliasNumPage();
-        $pdf->SetFont('Times', '', 12);
-        $pdf->setPrintFooter();
-        $pdf->SetAutoPageBreak(true, PDF_MARGIN_BOTTOM);
-        $pdf->AddPage();
+    if ($is_detail_enabled) {
+        $csv_courses = $this->prepare_csv_courses($csvdata);
+        $csv_categories = $this->prepare_csv_categories($csv_courses);
+    }
 
-        $user_institution = !isset($user->institution) ? $user->institution : "Non-renseigné";
-        $user_department = !isset($user->department) ? $user->department : "Non-renseigné";
+    $this->print_base_body($records, array_merge($csvdata, $csvdata), $csv_courses ?? [], $pdf, $user);
 
-        // Write fake header on the is_first page.
-        $pdf->writeHTML('<img src="https://static.uness.fr/img/UNESS_logo_200x80.png" width="100px" alt="Logo" />', false, false, true, false, 'R');
-        $pdf->writeHTML("<h1>Rapport d'activité, Temps de connexion</h1>");
-        $pdf->writeHTML('<div>Généré le : ' . date('d/m/Y H:i') . '</div><br>');
-        $pdf->writeHTML('<br><div>Plateforme : ' . $SITE->fullname . '</div>');
-        $pdf->writeHTML('<div>Utilisateur : ' . $user->firstname . ' ' . $user->lastname . '</div>');
-        $pdf->writeHTML('<div>Courriel : ' . $user->email . '</div>');
-        $pdf->writeHTML('<div>Université : ' . $user_institution . '</div>');
-        $pdf->writeHTML('<div>Spécialité : ' . $user_department . '</div>');
-        $pdf->writeHTML(
-            '<div>Période : du '
-            . (($start_time) ? date('d/m/Y', $start_time) : 'plus ancien')
-            . ' au '
-            . (($end_time) ? date('d/m/Y', $end_time) : 'plus récent')
-            . ' - Temps de connexion total : ' . $this::format_seconds($this->totaltime) . '</div><br />'
-        );
-
-        $pdf->writeHTML($calculation_rule_text);
-
-        // $records is containing a string when an error occurred.
-        if (is_string($records)) {
-            $pdf->writeHTML('<div>' . $records . '</div>');
-            $pdf->Output(generate_pdf_file_name($user->firstname . ' ' . $user->lastname, date('d/m/Y', $start_time), date('d/m/Y', $end_time)) . '.pdf', 'D');
-            return;
-        }
-
-        $pdf->writeHTML('<br>');
-
-        // prepare daily spent time.
-        $daily_activity = $this->prepare_daily_activities($records);
-
-        if ($is_detail_enabled) {
-            $csv_courses = $this->prepare_csv_courses($csvdata);
-            $csv_categories = $this->prepare_csv_categories($csv_courses);
-        }
-
-        $this->print_base_body($records, array_merge($csvdata, $csvdata), $csv_courses ?? [], $pdf, $user);
-
-        if ($is_detail_enabled) {
-            $nb_row = 3;
-            $second_table_heading = '<h3>Détail des temps de connexion par cours</h3>
+    if ($is_detail_enabled) {
+        $nb_row = 3;
+        $second_table_heading = '<h3>Détail des temps de connexion par cours</h3>
                              <div>Utilisateur : ' . $user->firstname . ' ' . $user->lastname . '</div>
                              <br />
                              <table cellspacing="0" cellpadding="1" border="1" style="border-color: gray;">
@@ -463,224 +481,240 @@ class generate_time_report extends \core\task\adhoc_task {
                              </tr>
                              </table>'; // <br /> not supported here
 
-            $pdf->writeHTMLCell(0, 0, '', '', $second_table_heading, 0, 1, 0);
-            $this->print_detailled_body($pdf, $nb_row, $csv_categories, $user);
-        }
-
-        if (empty($records)) {
-            $pdf->writeHTML('<div><b>Aucune activité sur cette période.</b></div>');
-        }
-
-        $filename = generate_pdf_file_name($user->firstname . ' ' . $user->lastname, date('d/m/Y', $start_time), date('d/m/Y', $end_time));
-        $returnstr = $pdf->Output($filename . '.pdf', 'S');
-
-        $this->write_new_file($returnstr, $contextid, $filename, $user, $requestorid);
+        $pdf->writeHTMLCell(0, 0, '', '', $second_table_heading, 0, 1, 0);
+        $this->print_detailled_body($pdf, $nb_row, $csv_categories, $user);
     }
 
-
-    private function get_course_fullname(int $course_id): string {
-        return self::$COURSES_CACHE[$course_id] ?? self::load_course_fullname($course_id);
+    if (empty($records)) {
+        $pdf->writeHTML('<div><b>Aucune activité sur cette période.</b></div>');
     }
 
-    /**
-     * Put in cache course fullname
-     * @param int $course_id
-     * @return mixed|string
-     * @throws \dml_exception
-     */
-    private static function load_course_fullname(int $course_id): string {
-        global $DB;
-        $fullname = $DB->get_field('course', 'fullname', ['id' => $course_id]);
-        self::$COURSES_CACHE[$course_id] = ($fullname) ? $fullname : '[ce cours n\'est plus accessible]';
-        return self::$COURSES_CACHE[$course_id];
+    $filename = generate_pdf_file_name($user->firstname . ' ' . $user->lastname, date('d/m/Y', $start_time), date('d/m/Y', $end_time));
+    $returnstr = $pdf->Output($filename . '.pdf', 'S');
+
+    $this->write_new_file($returnstr, $contextid, $filename, $user, $requestorid);
+}
+
+
+private
+function get_course_fullname(int $course_id): string
+{
+    return self::$COURSES_CACHE[$course_id] ?? self::load_course_fullname($course_id);
+}
+
+/**
+ * Put in cache course fullname
+ * @param int $course_id
+ * @return mixed|string
+ * @throws \dml_exception
+ */
+private
+static function load_course_fullname(int $course_id): string
+{
+    global $DB;
+    $fullname = $DB->get_field('course', 'fullname', ['id' => $course_id]);
+    self::$COURSES_CACHE[$course_id] = ($fullname) ? $fullname : '[ce cours n\'est plus accessible]';
+    return self::$COURSES_CACHE[$course_id];
+}
+
+private
+static function format_seconds($seconds)
+{
+    $hours = 0;
+    $milliseconds = str_replace('0.', '', $seconds - floor($seconds));
+
+    if ($seconds >= 3600) {
+        $hours = floor($seconds / 3600);
     }
 
-    private static function format_seconds($seconds) {
-        $hours = 0;
-        $milliseconds = str_replace('0.', '', $seconds - floor( $seconds ));
+    $seconds = $seconds % 3600;
 
-        if ($seconds >= 3600) {
-            $hours = floor($seconds / 3600);
+    return str_pad($hours, 2, '0', STR_PAD_LEFT)
+        . date(':i:s', $seconds)
+        . ($milliseconds ? $milliseconds : '');
+}
+
+private
+function prepare_results($user, array $data): string|array
+{
+    if (!array_values($data)) {
+        return '<h5>' . get_string('no_results_found', 'tool_time_report') . '</h5>';
+    }
+
+    $idletime = get_config('tool_time_report', 'idletime') / MINSECS;
+    $borrowedtime = get_config('tool_time_report', 'borrowedtime') * 1;
+    $currentday = array_values($data)[0];
+    $timefortheday = 0;
+    $i = 0;
+    $length = count($data);
+    $timefortheresource = 0;
+    $ressources = [];
+
+    $out = array();
+    $totaltime = 0;
+    $is_sent = false;
+
+    for ($i = 0; $i < $length; $i++) {
+        $item = array_values($data)[$i];
+        $nextval = self::get_nextval($data, $i);
+        $current_resource_fullname = $item->fullname;
+
+        // If the item log time is different than the current day time, we move forward.
+        if ($item->logtimecreated !== $currentday->logtimecreated) {
+            $currentday = $item;
+            $timefortheday = 0;
+            $timefortheresource = 0;
+            $ressources = [];
         }
 
-        $seconds = $seconds % 3600;
-
-        return str_pad($hours, 2, '0', STR_PAD_LEFT)
-            . date(':i:s', $seconds)
-            . ($milliseconds ? $milliseconds : '');
-    }
-
-    private function prepare_results($user, array $data): string|array {
-        if (!array_values($data)) {
-            return '<h5>'. get_string('no_results_found', 'tool_time_report') .'</h5>';
+        // If ressource not existing for th day, create it
+        if (!isset($ressources[$current_resource_fullname])) {
+            $ressources[$current_resource_fullname] = [
+                $timefortheresource,
+                $item->courseid,
+                $item->category,
+                $item->name,
+                $item->category_sortorder,
+                $item->course_sortorder
+            ];
+        } else if ($timefortheresource === 0) {
+            $timefortheresource = $ressources[$current_resource_fullname][0];
         }
 
-        $idletime = get_config('tool_time_report', 'idletime') / MINSECS;
-        $borrowedtime = get_config('tool_time_report', 'borrowedtime') * 1;
-        $currentday = array_values($data)[0];
-        $timefortheday = 0;
-        $i = 0;
-        $length = count($data);
-        $timefortheresource = 0;
-        $ressources = [];
+        // Last iteration.
+        if ($item->id === $nextval->id) {
+            $totaltime = $totaltime + $timefortheday;
+            $out = self::push_result($out, $item->timecreated, $timefortheday, $ressources, $item->courseid);
+            break;
+        }
 
-        $out = array();
-        $totaltime = 0;
-        $is_sent = false;
+        if (isset($nextval) && $nextval->logtimecreated == $currentday->logtimecreated) {
+            $nextvaltimecreated = intval($nextval->timecreated);
+            $itemtimecreated = intval($item->timecreated);
+            $timedelta = $nextvaltimecreated - $itemtimecreated;
 
-        for ($i = 0; $i < $length; $i++) {
-            $item = array_values($data)[$i];
-            $nextval = self::get_nextval($data, $i);
-            $current_resource_fullname = $item->fullname;
-
-            // If the item log time is different than the current day time, we move forward.
-            if ($item->logtimecreated !== $currentday->logtimecreated) {
-                $currentday = $item;
-                $timefortheday = 0;
-                $timefortheresource = 0;
-                $ressources = [];
-            }
-
-            // If ressource not existing for th day, create it
-            if (!isset($ressources[$current_resource_fullname])) {
-                $ressources[$current_resource_fullname] = [
-                    $timefortheresource,
-                    $item->courseid,
-                    $item->category,
-                    $item->name,
-                    $item->category_sortorder,
-                    $item->course_sortorder
-                ];
-            } else if ($timefortheresource === 0) {
-                $timefortheresource = $ressources[$current_resource_fullname][0];
-            }
-
-            // Last iteration.
-            if ($item->id === $nextval->id) {
-                $totaltime = $totaltime + $timefortheday;
-                $out = self::push_result($out, $item->timecreated, $timefortheday, $ressources, $item->courseid);
-                break;
-            }
-
-            if (isset($nextval) && $nextval->logtimecreated == $currentday->logtimecreated) {
-                $nextvaltimecreated = intval($nextval->timecreated);
-                $itemtimecreated = intval($item->timecreated);
-                $timedelta = $nextvaltimecreated - $itemtimecreated;
-
-                if (intval($timedelta / MINSECS) > $idletime) {
-                    $timefortheday = $timefortheday + $borrowedtime;
-                    $timefortheresource = $timefortheresource + $borrowedtime;
-                } else {
-                    $tmpdaytime = $timefortheday + $nextvaltimecreated - $itemtimecreated;
-                    $tmpressourcedaytime = $timefortheresource + $nextvaltimecreated - $itemtimecreated;
-                    if ($tmpressourcedaytime >= intval($timefortheresource + $idletime)) {
-                        $timefortheresource = $tmpressourcedaytime;
-                    }
-
-                    if ($tmpdaytime >= intval($timefortheday + $idletime)) {
-                        $timefortheday = $tmpdaytime;
-                    }
-                }
-            } else if ($nextval->logtimecreated != $currentday->logtimecreated) {
-                // Last iteration of the day.
+            if (intval($timedelta / MINSECS) > $idletime) {
                 $timefortheday = $timefortheday + $borrowedtime;
-                $ressources[$current_resource_fullname][0] = $timefortheresource + $borrowedtime;
-                $timefortheresource = 0;
-                $is_sent = true;
-            }
-
-            if (($current_resource_fullname !== $nextval->fullname) && !$is_sent) {
-                if ($nextval->logtimecreated != $currentday->logtimecreated) {
-                    $ressources[$current_resource_fullname][0] = $timefortheresource + $borrowedtime;
-                } else {
-                    $ressources[$current_resource_fullname][0] = $timefortheresource;
+                $timefortheresource = $timefortheresource + $borrowedtime;
+            } else {
+                $tmpdaytime = $timefortheday + $nextvaltimecreated - $itemtimecreated;
+                $tmpressourcedaytime = $timefortheresource + $nextvaltimecreated - $itemtimecreated;
+                if ($tmpressourcedaytime >= intval($timefortheresource + $idletime)) {
+                    $timefortheresource = $tmpressourcedaytime;
                 }
 
-                $timefortheresource = 0;
+                if ($tmpdaytime >= intval($timefortheday + $idletime)) {
+                    $timefortheday = $tmpdaytime;
+                }
+            }
+        } else if ($nextval->logtimecreated != $currentday->logtimecreated) {
+            // Last iteration of the day.
+            $timefortheday = $timefortheday + $borrowedtime;
+            $ressources[$current_resource_fullname][0] = $timefortheresource + $borrowedtime;
+            $timefortheresource = 0;
+            $is_sent = true;
+        }
+
+        if (($current_resource_fullname !== $nextval->fullname) && !$is_sent) {
+            if ($nextval->logtimecreated != $currentday->logtimecreated) {
+                $ressources[$current_resource_fullname][0] = $timefortheresource + $borrowedtime;
+            } else {
+                $ressources[$current_resource_fullname][0] = $timefortheresource;
             }
 
-            if (($timefortheday > 0 && isset($nextval) && $nextval->logtimecreated != $currentday->logtimecreated)
-                || ($timefortheday > 0 && $nextval == $item)) {
-                $totaltime = $totaltime + $timefortheday;
-
-                $out = self::push_result($out, $item->timecreated, $timefortheday, $ressources, $item->courseid);
-                $is_sent = false;
-            }
+            $timefortheresource = 0;
         }
 
-        $this->set_total_time($totaltime);
-        return $out;
-    }
+        if (($timefortheday > 0 && isset($nextval) && $nextval->logtimecreated != $currentday->logtimecreated)
+            || ($timefortheday > 0 && $nextval == $item)) {
+            $totaltime = $totaltime + $timefortheday;
 
-    /**
-     * Get the next item of the array of report results.
-     */
-    private static function get_nextval($data, $iteration) {
-        $item = array_values($data)[$iteration];
-
-        if (!isset(array_values($data)[$iteration + 1])) {
-            return $item;
+            $out = self::push_result($out, $item->timecreated, $timefortheday, $ressources, $item->courseid);
+            $is_sent = false;
         }
-
-        return array_values($data)[$iteration + 1];
     }
 
-    private static function push_result($items, $itemtimecreated, $timefortheday, $resources, $course_id) {
-        $date = date('d/m/Y', $itemtimecreated);
-        $seconds = self::format_seconds($timefortheday);
-        array_push($items, array($date, $seconds, $resources, $course_id));
-        return $items;
+    $this->set_total_time($totaltime);
+    return $out;
+}
+
+/**
+ * Get the next item of the array of report results.
+ */
+private
+static function get_nextval($data, $iteration)
+{
+    $item = array_values($data)[$iteration];
+
+    if (!isset(array_values($data)[$iteration + 1])) {
+        return $item;
     }
 
-    private function write_new_file($content, $contextid, $filename, $user, $requestorid) {
-        global $CFG;
+    return array_values($data)[$iteration + 1];
+}
 
-        $fs = get_file_storage();
-        $fileinfo = array(
-            'contextid' => $contextid,
-            'component' => 'tool_time_report',
-            'filearea' => 'content',
-            'itemid' => 0,
-            'filepath' => '/',
-            'filename' => $filename,
-            'userid' => $user->id
-        );
+private
+static function push_result($items, $itemtimecreated, $timefortheday, $resources, $course_id)
+{
+    $date = date('d/m/Y', $itemtimecreated);
+    $seconds = self::format_seconds($timefortheday);
+    array_push($items, array($date, $seconds, $resources, $course_id));
+    return $items;
+}
 
-        $file = $fs->get_file($fileinfo['contextid'], $fileinfo['component'], $fileinfo['filearea'],
-                $fileinfo['itemid'], $fileinfo['filepath'], $fileinfo['filename']);
+private
+function write_new_file($content, $contextid, $filename, $user, $requestorid)
+{
+    global $CFG;
 
-        if ($file) {
-            $file->delete(); // Delete the old file first.
-        }
+    $fs = get_file_storage();
+    $fileinfo = array(
+        'contextid' => $contextid,
+        'component' => 'tool_time_report',
+        'filearea' => 'content',
+        'itemid' => 0,
+        'filepath' => '/',
+        'filename' => $filename,
+        'userid' => $user->id
+    );
 
-        if ($fs->create_file_from_string($fileinfo, $content)) {
-            $path = "$CFG->wwwroot/pluginfile.php/$contextid/tool_time_report/content/0/$filename";
-            $this->generate_message($user, $path, $filename, $file, $requestorid);
-        }
+    $file = $fs->get_file($fileinfo['contextid'], $fileinfo['component'], $fileinfo['filearea'],
+        $fileinfo['itemid'], $fileinfo['filepath'], $fileinfo['filename']);
 
-        return $file;
+    if ($file) {
+        $file->delete(); // Delete the old file first.
     }
 
-    public function generate_message($user, $path, $filename, $file, $requestorid): void {
-        $fullname = fullname($user);
-        $messagehtml = "<p>" . get_string('download', 'core') . " : ";
-        $messagehtml .= "<a href=\"$path\" download><i class=\"fa fa-download\"></i>$filename</a></p>";
-        $contexturl = new moodle_url('/admin/tool/time_report/view.php', array('userid' => $user->id));
-
-        $message = new message();
-        $message->component         = 'tool_time_report';
-        $message->name              = 'reportcreation';
-        $message->userfrom          = \core_user::get_noreply_user();
-        $message->userto            = $requestorid;
-        $message->subject           = get_string('messageprovider:reportcreation', 'tool_time_report'). " : " .$fullname;
-        $message->fullmessageformat = FORMAT_HTML;
-        $message->fullmessage       = html_to_text($messagehtml);
-        $message->fullmessagehtml   = $messagehtml;
-        $message->smallmessage      = get_string('messageprovider:report_created', 'tool_time_report');
-        $message->notification      = 1;
-        $message->contexturl        = $contexturl;
-        $message->contexturlname    = get_string('time_report', 'tool_time_report');
-        $message->attachment = $file; // Set the file attachment.
-        message_send($message);
+    if ($fs->create_file_from_string($fileinfo, $content)) {
+        $path = "$CFG->wwwroot/pluginfile.php/$contextid/tool_time_report/content/0/$filename";
+        $this->generate_message($user, $path, $filename, $file, $requestorid);
     }
+
+    return $file;
+}
+
+public
+function generate_message($user, $path, $filename, $file, $requestorid): void
+{
+    $fullname = fullname($user);
+    $messagehtml = "<p>" . get_string('download', 'core') . " : ";
+    $messagehtml .= "<a href=\"$path\" download><i class=\"fa fa-download\"></i>$filename</a></p>";
+    $contexturl = new moodle_url('/admin/tool/time_report/view.php', array('userid' => $user->id));
+
+    $message = new message();
+    $message->component = 'tool_time_report';
+    $message->name = 'reportcreation';
+    $message->userfrom = \core_user::get_noreply_user();
+    $message->userto = $requestorid;
+    $message->subject = get_string('messageprovider:reportcreation', 'tool_time_report') . " : " . $fullname;
+    $message->fullmessageformat = FORMAT_HTML;
+    $message->fullmessage = html_to_text($messagehtml);
+    $message->fullmessagehtml = $messagehtml;
+    $message->smallmessage = get_string('messageprovider:report_created', 'tool_time_report');
+    $message->notification = 1;
+    $message->contexturl = $contexturl;
+    $message->contexturlname = get_string('time_report', 'tool_time_report');
+    $message->attachment = $file; // Set the file attachment.
+    message_send($message);
+}
 }

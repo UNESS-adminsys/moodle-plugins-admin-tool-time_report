@@ -89,45 +89,49 @@ class generate_time_report extends \core\task\adhoc_task
         }
     }
 
+    /**
+     * @param \stdClass $user
+     * @return string
+     * @throws \coding_exception
+     * Insert base header if page break while printing body
+     */
     private function set_base_pages_header(\stdClass $user): string
     {
-        return '<h3>Détail des temps de connexion par cours</h3>
-                <div>Utilisateur : ' . $user->firstname . ' ' . $user->lastname . '</div>
+        return '<h3>' . get_string('base_pages_heading_title', 'tool_time_report') . '</h3>
+                <div>' . get_string('header_user_infos_user', 'tool_time_report', $user->firstname . ' ' . $user->lastname) . '</div>
                 <br />
                 <table cellspacing="0" cellpadding="1" border="1" style="border-color:gray;">
                     <tr style="background-color:darkslategray;color:white;">
                         <td style="text-align: center; vertical-align: middle;">Date</td>
-                        <td style="text-align: center; vertical-align: middle;">Durée</td>
+                        <td style="text-align: center; vertical-align: middle;">' . get_string('pages_duration', 'tool_time_report'). '</td>
                     </tr>';
 
     }
 
     /**
-     * Insert header if page break inside generate_pdf()
+     * Insert details header if page break while printing body
      * @param $pdf
      * @param $user
      * @return string
      */
     private function set_detail_pages_header(\stdClass $user): string
     {
-        return '<h3>Détail des temps de connexion par cours</h3>
-                         <div>Utilisateur : ' . $user->firstname . ' ' . $user->lastname . '</div>
+        return '<h3>' . get_string('detail_pages_heading_title', 'tool_time_report') . '</h3>
+                         <div>' . get_string('header_user_infos_user', 'tool_time_report', $user->firstname . ' ' . $user->lastname) . '</div>
                          <br />
                          <table cellspacing="0" cellpadding="1" border="1" style="border-color:gray;">
                              <tr style="background-color:darkslategray;color:white;">
-                                <th style="text-align: center; vertical-align: middle;">Catégorie</th>
+                                <th style="text-align: center; vertical-align: middle;">' . get_string('detail_pages_heading_category', 'tool_time_report') . '</th>
                              </tr>
                          </table>
                          <table cellspacing="0" cellpadding="1" border="1" style="border-color:gray;">
                              <tr style="background-color:lightslategray;color:white;">
-                                <th style="text-align: center; vertical-align: middle;">Nom du cours</th>
+                                <th style="text-align: center; vertical-align: middle;">' . get_string('detail_pages_heading_course_name', 'tool_time_report') . '</th>
                              </tr>
                          </table>
                          <table cellspacing="0" cellpadding="1" border="1" style="border-color:gray;">
                             <tr>
-                                <th style="text-align: center; vertical-align: middle;">Durée</th>
-                                <th style="text-align: center; vertical-align: middle;">Premier accès</th>
-                                <th style="text-align: center; vertical-align: middle;">Dernier accès</th>
+                                <th style="text-align: center; vertical-align: middle;">' . get_string('pages_duration', 'tool_time_report') . '</th>
                             </tr>
                          </table>';
     }
@@ -192,7 +196,7 @@ class generate_time_report extends \core\task\adhoc_task
     }
 
     /**
-     * init categories array that will be used for printing
+     * Init categories array that will be used for printing
      * @param $csv_courses
      * @return array
      * @throws \dml_exception
@@ -226,14 +230,25 @@ class generate_time_report extends \core\task\adhoc_task
         return $csv_categories;
     }
 
+    /**
+     * @param array $records
+     * @param array $csvdata
+     * @param array $csv_courses
+     * @param pdf $pdf
+     * @param \stdClass $user
+     * @return void
+     * @throws \coding_exception
+     * @throws \dml_exception
+     * Display base table with data
+     */
     private function print_base_body(array $records, array $csvdata, array $csv_courses, \pdf $pdf, \stdClass $user): void
     {
         $nb_rows = 15;
-        $first_table = ' <h3>Synthèse des temps de connexion par jour</h3>
+        $first_table = ' <h3>' . get_string('base_pages_body_heading', 'tool_time_report') . '</h3>
                         <table cellspacing="0" cellpadding="1" border="1" style="border-color:gray;">
                             <tr style="background-color:darkslategray;color:white;">
                                 <td style="text-align: center; vertical-align: middle;">Date</td>
-                                <td style="text-align: center; vertical-align: middle;">Durée</td>
+                                <td style="text-align: center; vertical-align: middle;">' . get_string('pages_duration', 'tool_time_report') . '</td>
                             </tr>
                         ';
 
@@ -425,19 +440,18 @@ class generate_time_report extends \core\task\adhoc_task
 
         // Write fake header on the is_first page.
         $pdf->writeHTML('<img src="https://static.uness.fr/img/UNESS_logo_200x80.png" width="100px" alt="Logo" />', false, false, true, false, 'R');
-        $pdf->writeHTML("<h1>Rapport d'activité, Temps de connexion</h1>");
-        $pdf->writeHTML('<div>Généré le : ' . date('d/m/Y H:i') . '</div><br>');
-        $pdf->writeHTML('<br><div>Plateforme : ' . $SITE->fullname . '</div>');
-        $pdf->writeHTML('<div>Utilisateur : ' . $user->firstname . ' ' . $user->lastname . '</div>');
-        $pdf->writeHTML('<div>Courriel : ' . $user->email . '</div>');
-        $pdf->writeHTML('<div>Université : ' . $user_institution . '</div>');
-        $pdf->writeHTML('<div>Spécialité : ' . $user_department . '</div>');
+        $pdf->writeHTML('<h1>' . get_string('header_user_infos_docname', 'tool_time_report') . '</h1>');
+        $pdf->writeHTML('<div>' . get_string('header_user_infos_generated', 'tool_time_report', date('d/m/Y H:i')) . '</div><br>');
+        $pdf->writeHTML('<br><div>' . get_string('header_user_infos_platform', 'tool_time_report', $SITE->fullname) . '</div>');
+        $pdf->writeHTML('<div>' . get_string('header_user_infos_user', 'tool_time_report', $user->firstname . ' ' . $user->lastname) . '</div>');
+        $pdf->writeHTML('<div>' . get_string('header_user_infos_email', 'tool_time_report', $user->email) . '</div>');
+        $pdf->writeHTML('<div>' . get_string('header_user_infos_university', 'tool_time_report', $user_institution) . '</div>');
+        $pdf->writeHTML('<div>' . get_string('header_user_infos_speciality', 'tool_time_report', $user_department) . '</div>');
         $pdf->writeHTML(
-            '<div>Période : du '
-            . (($start_time) ? date('d/m/Y', $start_time) : 'plus ancien')
-            . ' au '
-            . (($end_time) ? date('d/m/Y', $end_time) : 'plus récent')
-            . ' - Temps de connexion total : ' . $this::format_seconds($this->totaltime) . '</div><br />'
+            '<div>' . get_string('header_user_infos_time', 'tool_time_report', (($start_time) ? date('d/m/Y', $start_time) : 'plus ancien'))
+            . ' ' . get_string('header_user_infos_time_to', 'tool_time_report', (($end_time) ? date('d/m/Y', $end_time) : 'plus récent'))
+            . ' ' . get_string('header_user_infos_total_time', 'tool_time_report', $this::format_seconds($this->totaltime))
+            . '</div><br />'
         );
 
         $pdf->writeHTML($calculation_rule_text);
@@ -463,8 +477,8 @@ class generate_time_report extends \core\task\adhoc_task
 
         if ($is_detail_enabled) {
             $nb_row = 3;
-            $second_table_heading = '<h3>Détail des temps de connexion par cours</h3>
-                             <div>Utilisateur : ' . $user->firstname . ' ' . $user->lastname . '</div>
+            $second_table_heading = '<h3>' . get_string('detail_pages_heading_title', 'tool_time_report') . '</h3>
+                             <div>' . get_string('header_user_infos_user', 'tool_time_report', $user->firstname . ' ' . $user->lastname) . '</div>
                              <br />
                              <table cellspacing="0" cellpadding="1" border="1" style="border-color: gray;">
                              <tr style="background-color:darkslategray;color:white;">
@@ -487,7 +501,7 @@ class generate_time_report extends \core\task\adhoc_task
         }
 
         if (empty($records)) {
-            $pdf->writeHTML('<div><b>Aucune activité sur cette période.</b></div>');
+            $pdf->writeHTML('<div><b>' . get_string('pages_no_activity', 'tool_time_report') . '</b></div>');
         }
 
         $filename = generate_pdf_file_name($user->firstname . ' ' . $user->lastname, date('d/m/Y', $start_time), date('d/m/Y', $end_time));

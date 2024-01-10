@@ -218,13 +218,7 @@ class generate_time_report extends \core\task\adhoc_task
 
         // sorting categories by their displayed order
         uasort($csv_categories, function ($a, $b) {
-            if ($a[2] > $b[2]) {
-                return 1;
-            } else if ($a[2] < $b[2]) {
-                return -1;
-            } else {
-                return 0;
-            }
+            return $a[2] <=> $b[2];
         });
 
         return $csv_categories;
@@ -320,13 +314,7 @@ class generate_time_report extends \core\task\adhoc_task
 
             // Sorting courses inside sorted categories
             uasort($sorted_courses, function ($a, $b) {
-                if ($a->course_sortorder > $b->course_sortorder) {
-                    return 1;
-                } else if ($a->course_sortorder < $b->course_sortorder) {
-                    return -1;
-                } else {
-                    return 0;
-                }
+                return $a->course_sortorder <=> $b->course_sortorder;
             });
 
             // Check if enought space on current page

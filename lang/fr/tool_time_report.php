@@ -53,6 +53,7 @@ $string['header_user_infos_time'] = 'Période : du {$a}';
 $string['header_user_infos_time_to'] = 'au {$a}';
 $string['header_user_infos_total_time'] = '- Temps de connexion total : {$a}';
 $string['pages_no_activity'] = 'Aucune activité sur cette période.';
+$string['unreachable_course'] = '[ce cours n\'est plus accessible]';
 $string['messageprovider:report_created'] = 'Un rapport de d’utilisateur a été créé';
 $string['client:reportgenerating'] = 'Génération du rapport...';
 $string['client:reportdownload'] = 'Télécharger le rapport';

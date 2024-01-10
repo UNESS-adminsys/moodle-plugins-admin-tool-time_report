@@ -53,6 +53,7 @@ $string['header_user_infos_time'] = 'Period : from {$a}';
 $string['header_user_infos_time_to'] = 'to {$a}';
 $string['header_user_infos_total_time'] = '- Total connection time : {$a}';
 $string['pages_no_activity'] = 'No activity during this period.';
+$string['unreachable_course'] = '[This course is unreachable].';
 $string['messageprovider:report_created'] = 'A time report has been created';
 $string['client:reportgenerating'] = 'Report generating...';
 $string['client:reportdownload'] = 'Download the report';

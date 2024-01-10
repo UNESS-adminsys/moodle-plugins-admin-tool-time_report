@@ -534,7 +534,7 @@ class generate_time_report extends \core\task\adhoc_task
     {
         global $DB;
         $fullname = $DB->get_field('course', 'fullname', ['id' => $course_id]);
-        self::$COURSES_CACHE[$course_id] = ($fullname) ? $fullname : '[ce cours n\'est plus accessible]';
+        self::$COURSES_CACHE[$course_id] = ($fullname) ? $fullname : get_string('unreachable_course', 'tool_time_report');
         return self::$COURSES_CACHE[$course_id];
     }
 
@@ -573,7 +573,7 @@ class generate_time_report extends \core\task\adhoc_task
 
         $out = array();
         $totaltime = 0;
-        $is_sent = false;
+        $is_day_last_iteration = false;
 
         for ($i = 0; $i < $length; $i++) {
             $item = array_values($data)[$i];
@@ -633,10 +633,10 @@ class generate_time_report extends \core\task\adhoc_task
                 $timefortheday = $timefortheday + $borrowedtime;
                 $ressources[$current_resource_fullname][0] = $timefortheresource + $borrowedtime;
                 $timefortheresource = 0;
-                $is_sent = true;
+                $is_day_last_iteration = true;
             }
 
-            if (($current_resource_fullname !== $nextval->fullname) && !$is_sent) {
+            if (($current_resource_fullname !== $nextval->fullname) && !$is_day_last_iteration) {
                 if ($nextval->logtimecreated != $currentday->logtimecreated) {
                     $ressources[$current_resource_fullname][0] = $timefortheresource + $borrowedtime;
                 } else {
@@ -651,7 +651,7 @@ class generate_time_report extends \core\task\adhoc_task
                 $totaltime = $totaltime + $timefortheday;
 
                 $out = self::push_result($out, $item->timecreated, $timefortheday, $ressources, $item->courseid);
-                $is_sent = false;
+                $is_day_last_iteration = false;
             }
         }
 

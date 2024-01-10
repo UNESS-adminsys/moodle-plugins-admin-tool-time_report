@@ -27,12 +27,12 @@ defined('MOODLE_INTERNAL') || die();
 
 use core_user\output\myprofile\tree;
 
-function get_enabled_logstore_name_pdf() {
+function get_enabled_logstore_name_pdf(): string|bool {
     $enabled_log_stores = explode(',', get_config('tool_log', 'enabled_stores'));
     return (!empty($enabled_log_stores)) ? $enabled_log_stores[0] : false;
 }
 
-function tool_time_report_myprofile_navigation(core_user\output\myprofile\tree $tree, $user, $iscurrentuser, $course) {
+function tool_time_report_myprofile_navigation(core_user\output\myprofile\tree $tree, stdClass $user, bool $iscurrentuser, stdClass $course): bool {
     global $CFG, $USER;
 
     $context = context_system::instance();
@@ -88,7 +88,7 @@ function tool_time_report_myprofile_navigation(core_user\output\myprofile\tree $
  * @param array $options additional options affecting the file serving
  * @return bool false if the file not found, just send the file otherwise and do not return anything
  */
-function tool_time_report_pluginfile($course, $cm, $context, $filearea, $args, $forcedownload, array $options=array()) {
+function tool_time_report_pluginfile(stdClass|int|null $course, stdClass|null $cm, stdClass $context, string $filearea, array $args, bool $forcedownload, array $options=array()): bool {
     // Check the contextlevel is as expected - if your plugin is a block, this becomes CONTEXT_BLOCK, etc.
     if ($context->contextlevel != CONTEXT_SYSTEM) {
         return false;
@@ -130,4 +130,5 @@ function tool_time_report_pluginfile($course, $cm, $context, $filearea, $args, $
 
     // We can now send the file back to the browser - in this case with a cache lifetime of 1 day and no filtering.
     send_stored_file($file, 86400, 0, $forcedownload, $options);
+    return true;
 }

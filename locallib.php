@@ -2,7 +2,7 @@
 
 defined('MOODLE_INTERNAL') || die();
 
-function get_user_log_records_pdf(int $user_id, int $start_time = 0, int $end_time = 0) {
+function get_user_log_records_pdf(int $user_id, int $start_time = 0, int $end_time = 0): string|array {
     global $DB;
     $logstore_name = get_enabled_logstore_name_pdf();
 
@@ -82,7 +82,7 @@ function get_user_log_records_pdf(int $user_id, int $start_time = 0, int $end_ti
  * @return string
  * @throws coding_exception
  */
-function generate_pdf_file_name($username, $start_time, $end_time) {
+function generate_pdf_file_name(string $username, string $start_time, string $end_time): string {
     if (!$username) throw new \coding_exception('Missing username');
 
     $start_t = str_replace('/', '-', $start_time);
@@ -102,7 +102,7 @@ function generate_pdf_file_name($username, $start_time, $end_time) {
  * @param  string $glue (optional)
  * @return string
  */
-function to_snake_case_pdf($str, $glue = '_') {
+function to_snake_case_pdf(string $str, string $glue = '_'): string {
     $str = preg_replace('/\s+/', '', $str);
     return ltrim(
         preg_replace_callback('/[A-Z]/', function ($matches) use ($glue) {
@@ -116,7 +116,7 @@ function to_snake_case_pdf($str, $glue = '_') {
  *
  * @return Array of moodle_url
  */
-function get_reports_files($contextid, $userid) {
+function get_reports_files(int $contextid, int $userid): array {
     global $DB;
 
     $conditions = array('contextid' => $contextid, 'component' => 'tool_time_report', 'filearea' => 'content', 'userid' => $userid);
@@ -129,7 +129,7 @@ function get_reports_files($contextid, $userid) {
  *
  * @return Array of moodle_url
  */
-function get_reports_urls($contextid, $userid) {
+function get_reports_urls(int $contextid, int $userid): array {
     $files = get_reports_files($contextid, $userid);
     $out = array();
 

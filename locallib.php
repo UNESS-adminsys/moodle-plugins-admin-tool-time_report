@@ -2,6 +2,13 @@
 
 defined('MOODLE_INTERNAL') || die();
 
+/**
+ * @param int $user_id
+ * @param int $start_time
+ * @param int $end_time
+ * @return string|array
+ * @throws dml_exception
+ */
 function get_user_log_records_pdf(int $user_id, int $start_time = 0, int $end_time = 0): string|array {
     global $DB;
     $logstore_name = get_enabled_logstore_name_pdf();

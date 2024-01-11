@@ -48,11 +48,18 @@ class generate_time_report extends \core\task\adhoc_task
     private static $COURSES_CACHE = [];
     public $totaltime = 0;
 
+    /**
+     * @param $totaltime
+     * @return void
+     */
     public function set_total_time($totaltime)
     {
         $this->totaltime = $totaltime;
     }
 
+    /**
+     * @return int|mixed
+     */
     public function get_total_time()
     {
         return $this->totaltime;
@@ -526,6 +533,10 @@ class generate_time_report extends \core\task\adhoc_task
         return self::$COURSES_CACHE[$course_id];
     }
 
+    /**
+     * @param int $seconds
+     * @return string
+     */
     private
     static function format_seconds(int $seconds)
     {
@@ -543,6 +554,13 @@ class generate_time_report extends \core\task\adhoc_task
             . ($milliseconds ? $milliseconds : '');
     }
 
+    /**
+     * Main calculations method
+     * @param array $data
+     * @return string|array
+     * @throws \coding_exception
+     * @throws \dml_exception
+     */
     private
     function prepare_results(array $data): string|array
     {
@@ -649,6 +667,9 @@ class generate_time_report extends \core\task\adhoc_task
 
     /**
      * Get the next item of the array of report results.
+     * @param array $data
+     * @param int $iteration
+     * @return \stdClass
      */
     private
     static function get_nextval(array $data, int $iteration): \stdClass
@@ -662,6 +683,14 @@ class generate_time_report extends \core\task\adhoc_task
         return array_values($data)[$iteration + 1];
     }
 
+    /**
+     * @param array $items
+     * @param int $itemtimecreated
+     * @param int $timefortheday
+     * @param array $resources
+     * @param int $course_id
+     * @return array
+     */
     private
     static function push_result(array $items, int $itemtimecreated, int $timefortheday, array $resources, int $course_id): array
     {
@@ -712,6 +741,16 @@ class generate_time_report extends \core\task\adhoc_task
         return $file;
     }
 
+    /**
+     * @param \stdClass $user
+     * @param string $path
+     * @param string $filename
+     * @param $file
+     * @param int $requestorid
+     * @return void
+     * @throws \coding_exception
+     * @throws \moodle_exception
+     */
     public
     function generate_message(\stdClass $user, string $path, string $filename, $file, int $requestorid): void
     {

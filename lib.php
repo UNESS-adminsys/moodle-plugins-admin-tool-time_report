@@ -27,11 +27,25 @@ defined('MOODLE_INTERNAL') || die();
 
 use core_user\output\myprofile\tree;
 
+/**
+ * @return string|bool
+ * @throws dml_exception
+ */
 function get_enabled_logstore_name_pdf(): string|bool {
     $enabled_log_stores = explode(',', get_config('tool_log', 'enabled_stores'));
     return (!empty($enabled_log_stores)) ? $enabled_log_stores[0] : false;
 }
 
+/**
+ * @param tree $tree
+ * @param stdClass $user
+ * @param bool $iscurrentuser
+ * @param stdClass $course
+ * @return bool
+ * @throws coding_exception
+ * @throws dml_exception
+ * @throws moodle_exception
+ */
 function tool_time_report_myprofile_navigation(core_user\output\myprofile\tree $tree, stdClass $user, bool $iscurrentuser, stdClass $course): bool {
     global $CFG, $USER;
 

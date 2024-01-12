@@ -46,7 +46,7 @@ function get_enabled_logstore_name_pdf(): string|bool {
  * @throws dml_exception
  * @throws moodle_exception
  */
-function tool_time_report_myprofile_navigation(core_user\output\myprofile\tree $tree, stdClass $user, bool $iscurrentuser, stdClass $course): bool {
+function tool_time_report_myprofile_navigation(core_user\output\myprofile\tree $tree, stdClass $user, bool $iscurrentuser, stdClass|null $course): bool {
     global $CFG, $USER;
 
     $context = context_system::instance();

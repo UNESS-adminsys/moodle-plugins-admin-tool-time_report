@@ -412,7 +412,7 @@ class generate_time_report extends \core\task\adhoc_task
      * @throws \dml_exception
      */
     private
-    function generate_pdf(array|string $records, \stdClass $user, int $requestorid, int $contextid, string $start_time, string $end_time, array $csvdata, bool $is_detail_enabled): void
+    function generate_pdf(array|string $records, \stdClass $user, int $requestorid, int $contextid, string $start_time, string $end_time, array|string $csvdata, bool $is_detail_enabled): void
     {
         global $SITE;
 
@@ -452,9 +452,12 @@ class generate_time_report extends \core\task\adhoc_task
         $pdf->writeHTML($calculation_rule_text);
 
         // $records is containing a string when an error occurred.
-        if (is_string($records)) {
-            $pdf->writeHTML('<div>' . $records . '</div>');
-            $pdf->Output(generate_pdf_file_name($user->firstname . ' ' . $user->lastname, date('d/m/Y', $start_time), date('d/m/Y', $end_time)) . '.pdf', 'D');
+        if (is_string($records) || is_string($csvdata)) {
+            $pdf->writeHTML('<br>' . str_replace('5', '1', $csvdata));
+            $filename = generate_pdf_file_name($user->firstname . ' ' . $user->lastname, date('d/m/Y', $start_time), date('d/m/Y', $end_time));
+            $returnstr = $pdf->Output($filename . '.pdf', 'S');
+
+            $this->write_new_file($returnstr, $contextid, $filename, $user, $requestorid);
             return;
         }
 

@@ -79,6 +79,13 @@ if ($hassiteconfig) {
             $defaultdbdriver,
             $drivers)
         );
+
+        $settingspage->add(new admin_setting_configtextarea(
+                'tool_time_report/calculation_rule_text',
+                new lang_string('settings:calculation_rule_text', 'tool_time_report'),
+                new lang_string('settings:calculation_rule_text', 'tool_time_report'),
+                "Le temps de connexion cumule les temps entre les clics souris. Si un clic intervient après {i} minutes d'inactivité, {b} minutes sont comptabilisées.")
+        );
     }
 
     $ADMIN->add('reports', $settingspage);

@@ -14,7 +14,11 @@
                 <input type="date" class="form-control" id="endInput" aria-describedby="endHelp" placeholder="Date de fin...">
             </div>
         </div>
-        <div class="row mt-4">
+        <input type="checkbox" class="mr-2" id="detail_checkbox"/>
+        <label for="detail_checkbox" class="pt-2">
+            <p>Afficher son activité détaillée sur les cours</p>
+        </label>
+        <div class="row mt-3">
             <div class="col-12">
                 <button type="submit" id="submitdate" class="btn btn-primary" data-context-tree-node="1">
                     {{#str}} create {{/str}}

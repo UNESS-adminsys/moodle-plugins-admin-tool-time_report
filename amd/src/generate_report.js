@@ -22,6 +22,7 @@ define(['jquery',
 
                 var startDate = document.querySelector('#startInput').valueAsNumber;
                 var endDate = document.querySelector('#endInput').valueAsNumber;
+                var is_detail_enabled = (document.getElementById('detail_checkbox').value === "on");
                 var completion = this.checkCompletion(startDate, endDate);
 
                 var icon = $('<img/>');
@@ -43,6 +44,7 @@ define(['jquery',
                     username: this.userName,
                     start: startDate,
                     end: endDate,
+                    is_detail_enabled: is_detail_enabled,
                     contextid: this.contextId
                 };
                 this.formdata = formdata;

@@ -80,7 +80,7 @@ function tool_time_report_myprofile_navigation(core_user\output\myprofile\tree $
     if ($isadmin || $hascapability) {
         $istargetadmin = in_array($user->id, array_keys($admins));
         $availableonadmins = get_config('tool_time_report', 'available_on_admins');
-        if (($istargetadmin && $availableonadmins) || !$istargetadmin) {
+        if (($istargetadmin && $availableonadmins) || (!$istargetadmin && $USER->id === $user->id)) {
             $pluginname = get_string('time_report', 'tool_time_report');
             $node = new core_user\output\myprofile\node('reports', 'tool_time_report', $pluginname, null, $url);
             $category->add_node($node);

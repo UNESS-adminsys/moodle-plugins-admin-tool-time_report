@@ -72,15 +72,12 @@ function tool_time_report_myprofile_navigation(core_user\output\myprofile\tree $
         $url = new moodle_url('/admin/tool/time_report/view.php', ['userid' => $user->id]);
     }
 
-    $admins = get_admins();
-    $isadmin = in_array($USER->id, array_keys($admins));
     $hascapability = has_capability('tool/time_report:view', $context);
 
-    // Add the node if the user is admin or has the capability.
-    if ($isadmin || $hascapability) {
-        $istargetadmin = in_array($user->id, array_keys($admins));
+    // Add the node if the user is logged.
+    if ($hascapability) {
         $availableonadmins = get_config('tool_time_report', 'available_on_admins');
-        if (($istargetadmin && $availableonadmins) || !$istargetadmin) {
+        if ($availableonadmins) {
             $pluginname = get_string('time_report', 'tool_time_report');
             $node = new core_user\output\myprofile\node('reports', 'tool_time_report', $pluginname, null, $url);
             $category->add_node($node);

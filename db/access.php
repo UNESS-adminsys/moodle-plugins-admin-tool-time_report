@@ -29,7 +29,7 @@ $capabilities = array(
         'captype' => 'read',
         'contextlevel' => CONTEXT_SYSTEM,
         'archetypes' => array(
-            'editingteacher' => CAP_ALLOW,
+            'user' => CAP_ALLOW,
         )
     ),
 );

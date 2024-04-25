@@ -11,11 +11,6 @@ $id = required_param('userid', PARAM_INT);
 $user = $DB->get_record('user', array('id' => $id), '*', MUST_EXIST);
 $currentuser = ($user->id == $USER->id);
 $personalcontext = context_user::instance($user->id);
-
-if (!has_capability('tool/time_report:view', $personalcontext)) {
-    redirect("$CFG->wwwroot/user/profile.php?id=?$user->id");
-}
-
 $systemcontext = context_system::instance();
 $usercontext   = context_user::instance($user->id, IGNORE_MISSING);
 $strprofile    = get_string('personalprofile');

@@ -24,13 +24,5 @@
 
 defined('MOODLE_INTERNAL') || die;
 
-$capabilities = array(
-    'tool/time_report:view' => array(
-        'captype' => 'read',
-        'contextlevel' => CONTEXT_SYSTEM,
-        'archetypes' => array(
-            'user' => CAP_ALLOW,
-        )
-    ),
-);
+$capabilities = [];
 

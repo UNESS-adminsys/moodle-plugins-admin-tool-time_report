@@ -37,6 +37,7 @@ $admins = get_admins();
 $isadmin = in_array($user->id, array_keys($admins));
 $availableonadmins = get_config('tool_time_report', 'available_on_admins');
 
+# availableonadmins is not a stable setting
 if ($isadmin && !$availableonadmins) {
     redirect("$CFG->wwwroot/user/profile.php?id=$user->id");
 }

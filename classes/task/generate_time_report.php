@@ -33,13 +33,11 @@ require_once(dirname(__FILE__) . '/../pdf.php');
 require_login();
 
 use core\message\message;
-use core_analytics\user;
+use Exception;
 use moodle_url;
 
 use pdf;
-use PhpOffice\PhpSpreadsheet\Calculation\Logical\Boolean;
-use tool_time_report\service\course_service;
-use tool_time_report;
+use tool_coreuness\api\core_request;
 use function Complex\sec;
 
 class generate_time_report extends \core\task\adhoc_task
@@ -388,8 +386,18 @@ class generate_time_report extends \core\task\adhoc_task
         $pdf->SetAutoPageBreak(true, PDF_MARGIN_BOTTOM);
         $pdf->AddPage();
 
-        $user_institution = !isset($user->institution) ? $user->institution : "Non-renseigné";
-        $user_department = !isset($user->department) ? $user->department : "Non-renseigné";
+        $user_institution = "Non-renseigné";
+        //$user_department = "Non-renseigné";
+        try {
+            $core = new core_request();
+            $user_json = $core->get_json_from_endpoint('utilisateur/', ['uness_ids' => $user->username, 'fields' => 'universite_rattachement']);
+
+            if (!empty($user_json[0]['universite_rattachement'])){
+                $user_institution = $user_json[0]['universite_rattachement'];
+            }
+        }catch (Exception $e){
+
+        }
 
         // Write fake header on the is_first page.
         $pdf->writeHTML('<img src="https://static.uness.fr/img/UNESS_logo_200x80.png" width="100px" alt="Logo" />', false, false, true, false, 'R');
@@ -399,7 +407,7 @@ class generate_time_report extends \core\task\adhoc_task
         $pdf->writeHTML('<div>' . get_string('header_user_infos_user', 'tool_time_report', $user->firstname . ' ' . $user->lastname) . '</div>');
         $pdf->writeHTML('<div>' . get_string('header_user_infos_email', 'tool_time_report', $user->email) . '</div>');
         $pdf->writeHTML('<div>' . get_string('header_user_infos_university', 'tool_time_report', $user_institution) . '</div>');
-        $pdf->writeHTML('<div>' . get_string('header_user_infos_speciality', 'tool_time_report', $user_department) . '</div>');
+        //$pdf->writeHTML('<div>' . get_string('header_user_infos_speciality', 'tool_time_report', $user_department) . '</div>');
         $pdf->writeHTML(
             '<div>' . get_string('header_user_infos_time', 'tool_time_report', (($start_time) ? date('d/m/Y', $start_time) : 'plus ancien'))
             . ' ' . get_string('header_user_infos_time_to', 'tool_time_report', (($end_time) ? date('d/m/Y', $end_time) : 'plus récent'))

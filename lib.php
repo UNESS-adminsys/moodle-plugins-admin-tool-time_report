@@ -31,7 +31,8 @@ use core_user\output\myprofile\tree;
  * @return string|bool
  * @throws dml_exception
  */
-function get_enabled_logstore_name_pdf(): string|bool {
+function get_enabled_logstore_name_pdf(): string|bool
+{
     $enabled_log_stores = explode(',', get_config('tool_log', 'enabled_stores'));
     return (!empty($enabled_log_stores)) ? $enabled_log_stores[0] : false;
 }
@@ -46,7 +47,8 @@ function get_enabled_logstore_name_pdf(): string|bool {
  * @throws dml_exception
  * @throws moodle_exception
  */
-function tool_time_report_myprofile_navigation(core_user\output\myprofile\tree $tree, stdClass $user, bool $iscurrentuser, stdClass|null $course): bool {
+function tool_time_report_myprofile_navigation(core_user\output\myprofile\tree $tree, stdClass $user, bool $iscurrentuser, stdClass|null $course): bool
+{
     global $CFG, $USER;
 
     $context = context_system::instance();
@@ -74,13 +76,16 @@ function tool_time_report_myprofile_navigation(core_user\output\myprofile\tree $
 
     $admins = get_admins();
     $isadmin = in_array($USER->id, array_keys($admins));
-    $hascapability = has_capability('tool/time_report:view', $context);
 
     // Add the node if the user is admin or has the capability.
-    if ($isadmin || $hascapability) {
-        $istargetadmin = in_array($user->id, array_keys($admins));
-        $availableonadmins = get_config('tool_time_report', 'available_on_admins');
-        if (($istargetadmin && $availableonadmins) || !$istargetadmin) {
+    $istargetadmin = in_array($user->id, array_keys($admins));
+    $availableonadmins = get_config('tool_time_report', 'available_on_admins');
+    if (($istargetadmin && $availableonadmins)) {
+        $pluginname = get_string('time_report', 'tool_time_report');
+        $node = new core_user\output\myprofile\node('reports', 'tool_time_report', $pluginname, null, $url);
+        $category->add_node($node);
+    } else {
+        if ((!$isadmin && $USER->id === $user->id) || ($isadmin && $USER->id !== $user->id)) {
             $pluginname = get_string('time_report', 'tool_time_report');
             $node = new core_user\output\myprofile\node('reports', 'tool_time_report', $pluginname, null, $url);
             $category->add_node($node);
@@ -102,7 +107,8 @@ function tool_time_report_myprofile_navigation(core_user\output\myprofile\tree $
  * @param array $options additional options affecting the file serving
  * @return bool false if the file not found, just send the file otherwise and do not return anything
  */
-function tool_time_report_pluginfile(stdClass|int|null $course, stdClass|null $cm, stdClass $context, string $filearea, array $args, bool $forcedownload, array $options=array()): bool {
+function tool_time_report_pluginfile(stdClass|int|null $course, stdClass|null $cm, stdClass $context, string $filearea, array $args, bool $forcedownload, array $options = array()): bool
+{
     // Check the contextlevel is as expected - if your plugin is a block, this becomes CONTEXT_BLOCK, etc.
     if ($context->contextlevel != CONTEXT_SYSTEM) {
         return false;
@@ -116,11 +122,6 @@ function tool_time_report_pluginfile(stdClass|int|null $course, stdClass|null $c
     // Make sure the user is logged in and has access to the module.
     require_login($course, true, $cm);
 
-    // Check the relevant capabilities - these may vary depending on the filearea being accessed.
-    if (!has_capability('tool/time_report:view', $context)) {
-        return false;
-    }
-
     // Leave this line out if you set the itemid to null in make_pluginfile_url (set $itemid to 0 instead).
     $itemid = array_shift($args); // The first item in the $args array.
 
@@ -132,7 +133,7 @@ function tool_time_report_pluginfile(stdClass|int|null $course, stdClass|null $c
     if (!$args) {
         $filepath = '/';
     } else {
-        $filepath = '/'.implode('/', $args).'/';
+        $filepath = '/' . implode('/', $args) . '/';
     }
 
     // Retrieve the file from the Files API.

@@ -33,13 +33,11 @@ require_once(dirname(__FILE__) . '/../pdf.php');
 require_login();
 
 use core\message\message;
-use core_analytics\user;
+use Exception;
 use moodle_url;
 
 use pdf;
-use PhpOffice\PhpSpreadsheet\Calculation\Logical\Boolean;
-use tool_time_report\service\course_service;
-use tool_time_report;
+use tool_coreuness\api\core_request;
 use function Complex\sec;
 
 class generate_time_report extends \core\task\adhoc_task
@@ -110,7 +108,7 @@ class generate_time_report extends \core\task\adhoc_task
                 <table cellspacing="0" cellpadding="1" border="1" style="border-color:gray;">
                     <tr style="background-color:darkslategray;color:white;">
                         <td style="text-align: center; vertical-align: middle;">Date</td>
-                        <td style="text-align: center; vertical-align: middle;">' . get_string('pages_duration', 'tool_time_report'). '</td>
+                        <td style="text-align: center; vertical-align: middle;">' . get_string('pages_duration', 'tool_time_report') . '</td>
                     </tr>';
 
     }
@@ -144,33 +142,6 @@ class generate_time_report extends \core\task\adhoc_task
     }
 
     /**
-     * Init daily activities
-     * @param array $records
-     * @return array
-     */
-    private function prepare_daily_activities(array $records): array
-    {
-        $daily_activity = [];
-
-        foreach ($records as $date => $data) {
-            $daily_activity[$date] = ['first_access' => 0, 'last_access' => 0];
-            $date_logs = json_decode($data->logs);
-
-            foreach ($date_logs as $log) {
-                if (!$daily_activity[$date]['first_access'] || $log->timecreated < $daily_activity[$date]['first_access']) {
-                    $daily_activity[$date]['first_access'] = $log->timecreated;
-                }
-
-                if (!$daily_activity[$date]['last_access'] || $log->timecreated > $daily_activity[$date]['last_access']) {
-                    $daily_activity[$date]['last_access'] = $log->timecreated;
-                }
-            }
-        }
-
-        return $daily_activity;
-    }
-
-    /**
      * init courses array that will be used for printing
      * @param $csvdata
      * @return array
@@ -181,20 +152,18 @@ class generate_time_report extends \core\task\adhoc_task
         $csv_courses = [];
 
         foreach ($csvdata as $csv_record) {
-            if (!isset($csv_courses[$csv_record[2][0]])) {
-                foreach ($csv_record[2] as $key => $course_data) {
-                    if (!isset($csv_courses[$key])) {
-                        $csv_courses[$key] = new \stdClass();
-                        $csv_courses[$key]->course_time_data = $course_data[0];
-                        $csv_courses[$key]->course_id = $course_data[1];
-                        $csv_courses[$key]->course_name = $key;
-                        $csv_courses[$key]->category_id = $course_data[2];
-                        $csv_courses[$key]->category_name = $course_data[3];
-                        $csv_courses[$key]->category_sortorder = $course_data[4];
-                        $csv_courses[$key]->course_sortorder = $course_data[5];
-                    } else {
-                        $csv_courses[$key]->course_time_data += $course_data[0];
-                    }
+            foreach ($csv_record[2] as $key => $course_data) {
+                if (!isset($csv_courses[$key])) {
+                    $csv_courses[$key] = new \stdClass();
+                    $csv_courses[$key]->course_time_data = $course_data[0];
+                    $csv_courses[$key]->course_id = $course_data[1];
+                    $csv_courses[$key]->course_name = $key;
+                    $csv_courses[$key]->category_id = $course_data[2];
+                    $csv_courses[$key]->category_name = $course_data[3];
+                    $csv_courses[$key]->category_sortorder = $course_data[4];
+                    $csv_courses[$key]->course_sortorder = $course_data[5];
+                } else {
+                    $csv_courses[$key]->course_time_data += $course_data[0];
                 }
             }
         }
@@ -242,7 +211,7 @@ class generate_time_report extends \core\task\adhoc_task
      * @throws \dml_exception
      * Display base table with data
      */
-    private function print_base_body(array $records, array $csvdata, array $csv_courses, \pdf $pdf, \stdClass $user): void
+    private function print_base_body(array $records, array $csvdata, \pdf $pdf, \stdClass $user): void
     {
         $nb_rows = 15;
         $first_table = ' <h3>' . get_string('base_pages_body_heading', 'tool_time_report') . '</h3>
@@ -253,9 +222,8 @@ class generate_time_report extends \core\task\adhoc_task
                             </tr>
                         ';
 
-        foreach ($records as $key => $data) {
+        foreach ($records as $data) {
             $datetime = new \DateTime($data->date . ' 23:59:59.000000');
-            $date_logs = json_decode($data->logs);
             $total_duration = '00:00:00';
 
             foreach ($csvdata as $csv_record) {
@@ -279,23 +247,11 @@ class generate_time_report extends \core\task\adhoc_task
                                       </tr>';
 
                 $nb_rows += 1;
-
-                foreach ($date_logs as $log) {
-                    if (in_array($log->target, ['course', 'course_module'])) {
-                        $course_fullname = $this->get_course_fullname($log->courseid);
-                        if (!isset($csv_courses[$course_fullname]->first_access)) {
-                            $csv_courses[$course_fullname]->first_access = date('d/m/Y à H:i', $log->timecreated);
-                        } else {
-                            $csv_courses[$course_fullname]->last_access = date('d/m/Y à H:i', $log->timecreated);
-                        }
-                    }
-                }
             }
         }
 
         $first_table .= '</table><br>';
         $pdf->writeHTMLCell(0, 0, '', '', $first_table, 0, 1, 0);
-        $pdf->AddPage();
     }
 
 
@@ -387,7 +343,7 @@ class generate_time_report extends \core\task\adhoc_task
 
                     if ($is_first) {
                         $is_first = false;
-                    };
+                    }
 
                     $second_table = '';
                 }
@@ -430,8 +386,18 @@ class generate_time_report extends \core\task\adhoc_task
         $pdf->SetAutoPageBreak(true, PDF_MARGIN_BOTTOM);
         $pdf->AddPage();
 
-        $user_institution = !isset($user->institution) ? $user->institution : "Non-renseigné";
-        $user_department = !isset($user->department) ? $user->department : "Non-renseigné";
+        $user_institution = "Non-renseigné";
+        //$user_department = "Non-renseigné";
+        try {
+            $core = new core_request();
+            $user_json = $core->get_json_from_endpoint('utilisateur/', ['uness_ids' => $user->username, 'fields' => 'universite_rattachement']);
+
+            if (!empty($user_json[0]['universite_rattachement'])){
+                $user_institution = $user_json[0]['universite_rattachement'];
+            }
+        }catch (Exception $e){
+
+        }
 
         // Write fake header on the is_first page.
         $pdf->writeHTML('<img src="https://static.uness.fr/img/UNESS_logo_200x80.png" width="100px" alt="Logo" />', false, false, true, false, 'R');
@@ -441,7 +407,7 @@ class generate_time_report extends \core\task\adhoc_task
         $pdf->writeHTML('<div>' . get_string('header_user_infos_user', 'tool_time_report', $user->firstname . ' ' . $user->lastname) . '</div>');
         $pdf->writeHTML('<div>' . get_string('header_user_infos_email', 'tool_time_report', $user->email) . '</div>');
         $pdf->writeHTML('<div>' . get_string('header_user_infos_university', 'tool_time_report', $user_institution) . '</div>');
-        $pdf->writeHTML('<div>' . get_string('header_user_infos_speciality', 'tool_time_report', $user_department) . '</div>');
+        //$pdf->writeHTML('<div>' . get_string('header_user_infos_speciality', 'tool_time_report', $user_department) . '</div>');
         $pdf->writeHTML(
             '<div>' . get_string('header_user_infos_time', 'tool_time_report', (($start_time) ? date('d/m/Y', $start_time) : 'plus ancien'))
             . ' ' . get_string('header_user_infos_time_to', 'tool_time_report', (($end_time) ? date('d/m/Y', $end_time) : 'plus récent'))
@@ -463,17 +429,15 @@ class generate_time_report extends \core\task\adhoc_task
 
         $pdf->writeHTML('<br>');
 
-        // prepare daily spent time.
-        $daily_activity = $this->prepare_daily_activities($records);
-
         if ($is_detail_enabled) {
             $csv_courses = $this->prepare_csv_courses($csvdata);
             $csv_categories = $this->prepare_csv_categories($csv_courses);
         }
 
-        $this->print_base_body($records, array_merge($csvdata, $csvdata), $csv_courses ?? [], $pdf, $user);
+        $this->print_base_body($records, array_merge($csvdata, $csvdata), $pdf, $user);
 
         if ($is_detail_enabled) {
+            $pdf->AddPage();
             $nb_row = 3;
             $second_table_heading = '<h3>' . get_string('detail_pages_heading_title', 'tool_time_report') . '</h3>
                              <div>' . get_string('header_user_infos_user', 'tool_time_report', $user->firstname . ' ' . $user->lastname) . '</div>
@@ -532,7 +496,7 @@ class generate_time_report extends \core\task\adhoc_task
     {
         global $DB;
         $fullname = $DB->get_field('course', 'fullname', ['id' => $course_id]);
-        self::$COURSES_CACHE[$course_id] = ($fullname) ? $fullname : get_string('unreachable_course', 'tool_time_report');
+        self::$COURSES_CACHE[$course_id] = ($fullname) ?: get_string('unreachable_course', 'tool_time_report');
         return self::$COURSES_CACHE[$course_id];
     }
 
@@ -554,7 +518,7 @@ class generate_time_report extends \core\task\adhoc_task
 
         return str_pad($hours, 2, '0', STR_PAD_LEFT)
             . date(':i:s', $seconds)
-            . ($milliseconds ? $milliseconds : '');
+            . ($milliseconds ?: '');
     }
 
     /**
@@ -575,12 +539,10 @@ class generate_time_report extends \core\task\adhoc_task
         $borrowedtime = get_config('tool_time_report', 'borrowedtime') * 1;
         $currentday = array_values($data)[0];
         $timefortheday = 0;
-        $i = 0;
         $length = count($data);
         $timefortheresource = 0;
         $ressources = [];
-
-        $out = array();
+        $out = [];
         $totaltime = 0;
         $is_day_last_iteration = false;
 
@@ -597,15 +559,15 @@ class generate_time_report extends \core\task\adhoc_task
                 $ressources = [];
             }
 
-            // If ressource not existing for th day, create it
+            // If ressource not existing for the day, create it
             if (!isset($ressources[$current_resource_fullname])) {
                 $ressources[$current_resource_fullname] = [
                     $timefortheresource,
                     $item->courseid,
-                    $item->category,
-                    $item->name,
-                    $item->category_sortorder,
-                    $item->course_sortorder
+                    (isset($item->category)) ? $item->category : null,
+                    (isset($item->name)) ? $item->name : null,
+                    (isset($item->category_sortorder)) ? $item->category_sortorder : null,
+                    (isset($item->course_sortorder)) ? $item->course_sortorder : null,
                 ];
             } else if ($timefortheresource === 0) {
                 $timefortheresource = $ressources[$current_resource_fullname][0];
@@ -715,7 +677,8 @@ class generate_time_report extends \core\task\adhoc_task
      * @throws \stored_file_creation_exception
      */
     private
-    function write_new_file(string $content, int $contextid, string $filename, \stdClass $user, int $requestorid): bool|\stored_file{
+    function write_new_file(string $content, int $contextid, string $filename, \stdClass $user, int $requestorid): bool|\stored_file
+    {
         global $CFG;
 
         $fs = get_file_storage();

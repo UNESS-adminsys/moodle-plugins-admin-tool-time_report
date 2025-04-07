@@ -33,10 +33,6 @@ $id = required_param('userid', PARAM_INT);
 $user = $DB->get_record('user', array('id' => $id), '*', MUST_EXIST);
 
 $personalcontext = context_user::instance($user->id);
-if (!has_capability('tool/time_report:view', $personalcontext)) {
-    redirect("$CFG->wwwroot/user/profile.php?id=?$user->id");
-}
-
 $context = \context_system::instance();
 remove_reports_files($context->id, $user->id);
 redirect("$CFG->wwwroot/admin/tool/time_report/view.php?userid=$user->id");

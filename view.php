@@ -1,21 +1,16 @@
- <?php
+<?php
 
 require_once(dirname(__FILE__) . '/../../../config.php');
 require_once(dirname(__FILE__) . '/locallib.php');
 
 require_login();
 
-global $PAGE, $USER;
+global $PAGE, $USER, $DB, $OUTPUT, $CFG;
 
 $id = required_param('userid', PARAM_INT);
 $user = $DB->get_record('user', array('id' => $id), '*', MUST_EXIST);
 $currentuser = ($user->id == $USER->id);
-
 $personalcontext = context_user::instance($user->id);
-if (!has_capability('tool/time_report:view', $personalcontext)) {
-    redirect("$CFG->wwwroot/user/profile.php?id=?$user->id");
-}
-
 $systemcontext = context_system::instance();
 $usercontext   = context_user::instance($user->id, IGNORE_MISSING);
 $strprofile    = get_string('personalprofile');
@@ -37,6 +32,7 @@ $admins = get_admins();
 $isadmin = in_array($user->id, array_keys($admins));
 $availableonadmins = get_config('tool_time_report', 'available_on_admins');
 
+# availableonadmins is not a stable setting
 if ($isadmin && !$availableonadmins) {
     redirect("$CFG->wwwroot/user/profile.php?id=$user->id");
 }

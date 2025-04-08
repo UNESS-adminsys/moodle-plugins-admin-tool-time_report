@@ -1,5 +1,8 @@
 <?php
 
+use logstore_standard\log\store;
+use tool_log\log\manager;
+
 defined('MOODLE_INTERNAL') || die();
 
 /**
@@ -17,9 +20,9 @@ function get_user_log_records_pdf(int $user_id, int $start_time = 0, int $end_ti
         case 'logstore_database':
             $dbtable = get_config('logstore_database', 'dbtable');
             $dbdriver = get_config('logstore_database', 'dbdriver');
-            list($dblibrary, $dbtype) = explode('/', $dbdriver);
+            [$dblibrary, $dbtype] = explode('/', $dbdriver);
 
-            if (!$db = \moodle_database::get_driver_instance($dbtype, $dblibrary, true)) {
+            if (!$db = moodle_database::get_driver_instance($dbtype, $dblibrary, true)) {
                 return 'Cette fonctionnalité est indisponible. (UNKNOWN_DRIVER)';
             }
 
@@ -42,14 +45,14 @@ function get_user_log_records_pdf(int $user_id, int $start_time = 0, int $end_ti
                 );
 
                 $selected_db = $db;
-            } catch (\moodle_exception $e) {
+            } catch (moodle_exception $e) {
                 return 'Cette fonctionnalité est indisponible. (LOGS_ACCESS_2)';
             }
 
             break;
         case 'logstore_standard':
-            $manager = new \tool_log\log\manager();
-            $store = new \logstore_standard\log\store($manager);
+            $manager = new manager();
+            $store = new store($manager);
             $dbtable = '{' . $store->get_internal_log_table_name() . '}';
             $selected_db = $DB;
             break;
@@ -90,7 +93,7 @@ function get_user_log_records_pdf(int $user_id, int $start_time = 0, int $end_ti
  * @throws coding_exception
  */
 function generate_pdf_file_name(string $username, string $start_time, string $end_time): string {
-    if (!$username) throw new \coding_exception('Missing username');
+    if (!$username) throw new coding_exception('Missing username');
 
     $start_t = str_replace('/', '-', $start_time);
     $end_t = str_replace('/', '-', $end_time);
@@ -160,7 +163,7 @@ function get_reports_urls(int $contextid, int $userid): array {
  */
 function generate_file_name($username, $startdate, $enddate) {
     if (!$username) {
-        throw new \coding_exception('Missing username');
+        throw new coding_exception('Missing username');
     }
     return strtolower(get_string('report', 'core'))
         . '__' . to_snake_case($username)
@@ -231,44 +234,44 @@ function get_log_records($userid, $startdate, $enddate) {
 
     $logstore_table = get_log_store_table();
     if ($dbdriver == 'native/pgsql') {
-        $sql = "SELECT ${logstore_table}.id, ${logstore_table}.timecreated,
-                ${logstore_table}.courseid,
-                date(TO_TIMESTAMP(${logstore_table}.timecreated)) AS datecreated,
-                date(TO_TIMESTAMP(${logstore_table}.timecreated)) AS logtimecreated,
-                ${logstore_table}.userid, {user}.email, {course}.fullname
-                FROM ${logstore_table}
-                INNER JOIN {course} ON ${logstore_table}.courseid = {course}.id
-                LEFT OUTER JOIN {user} ON ${logstore_table}.userid = {user}.id
-                WHERE ${logstore_table}.userid = ?
-                AND (${logstore_table}.timecreated BETWEEN ? AND ?)
-                AND ${logstore_table}.courseid != 1 ";
+        $sql = "SELECT {$logstore_table}.id, {$logstore_table}.timecreated,
+                {$logstore_table}.courseid,
+                date(TO_TIMESTAMP({$logstore_table}.timecreated)) AS datecreated,
+                date(TO_TIMESTAMP({$logstore_table}.timecreated)) AS logtimecreated,
+                {$logstore_table}.userid, {user}.email, {course}.fullname
+                FROM {$logstore_table}
+                INNER JOIN {course} ON {$logstore_table}.courseid = {course}.id
+                LEFT OUTER JOIN {user} ON {$logstore_table}.userid = {user}.id
+                WHERE {$logstore_table}.userid = ?
+                AND ({$logstore_table}.timecreated BETWEEN ? AND ?)
+                AND {$logstore_table}.courseid != 1 ";
 
 
         if (count($allowedtargets) > 0) {
             $targets = "('" . implode("','", $allowedtargets) . "')";
-            $sql .= "AND ${logstore_table}.target IN " . $targets;
+            $sql .= "AND {$logstore_table}.target IN " . $targets;
         }
     } else {
-        $sql = "SELECT ${logstore_table}.id, ${logstore_table}.timecreated,
-                ${logstore_table}.courseid,
-                date_format(from_unixtime(${logstore_table}.timecreated), '%Y%m') AS datecreated,
-                date(from_unixtime(${logstore_table}.timecreated)) AS logtimecreated,
-                ${logstore_table}.userid, {user}.email, {course}.fullname
-                FROM ${logstore_table}
-                INNER JOIN {course} ON ${logstore_table}.courseid = {course}.id
-                LEFT OUTER JOIN {user} ON ${logstore_table}.userid = {user}.id
-                WHERE ${logstore_table}.userid = ?
-                AND ${logstore_table}.timecreated BETWEEN ? AND ?
-                AND ${logstore_table}.courseid <> 1 ";
+        $sql = "SELECT {$logstore_table}.id, {$logstore_table}.timecreated,
+                {$logstore_table}.courseid,
+                date_format(from_unixtime({$logstore_table}.timecreated), '%Y%m') AS datecreated,
+                date(from_unixtime({$logstore_table}.timecreated)) AS logtimecreated,
+                {$logstore_table}.userid, {user}.email, {course}.fullname
+                FROM {$logstore_table}
+                INNER JOIN {course} ON {$logstore_table}.courseid = {course}.id
+                LEFT OUTER JOIN {user} ON {$logstore_table}.userid = {user}.id
+                WHERE {$logstore_table}.userid = ?
+                AND {$logstore_table}.timecreated BETWEEN ? AND ?
+                AND {$logstore_table}.courseid <> 1 ";
 
 
         if (count($allowedtargets) > 0) {
             $targets = implode('","', $allowedtargets);
-            $sql .= "AND ${logstore_table}.target IN ('" . $targets . "') ";
+            $sql .= "AND {$logstore_table}.target IN ('" . $targets . "') ";
         }
     }
 
-    $sql .= "ORDER BY ${logstore_table}.timecreated ASC";
+    $sql .= "ORDER BY {$logstore_table}.timecreated ASC";
     return $DB->get_records_sql($sql, array($userid, $startdate, $enddate));
 }
 
@@ -280,7 +283,7 @@ function get_log_records($userid, $startdate, $enddate) {
 function get_targets() {
     global $DB;
     $logstore_table = get_log_store_table();
-    $sql = "SELECT DISTINCT(target) FROM ${logstore_table}";
+    $sql = "SELECT DISTINCT(target) FROM {$logstore_table}";
     $results = $DB->get_records_sql($sql);
     return array_column($results, 'target');
 }
@@ -310,8 +313,8 @@ function get_allowed_targets() {
 
 function get_log_store_table($default_table = null): string {
     global $DB;
-    $manager = new \tool_log\log\manager();
-    $store = new \logstore_standard\log\store($manager);
+    $manager = new manager();
+    $store = new store($manager);
     if (get_config('tool_time_report', 'use_view_table')) {
         $view_table = get_config('tool_time_report', 'name_view_table');
         $request = "SELECT 'x' FROM moodle.pg_catalog.pg_views WHERE viewname = '{{$view_table}}'";

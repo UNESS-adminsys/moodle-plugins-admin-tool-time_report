@@ -15,20 +15,17 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Time Report tool plugin's version file.
+ * tool_time_report caches.php description here.
  *
- * @package   tool_time_report
- * @copyright 2023 Pierre Duverneix - Fondation UNIT
- * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ * @package    tool_time_report
+ * @copyright  2025 Michael Mariaux <michael.mariaux@uness.fr>
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-defined('MOODLE_INTERNAL') || die();
 
-$plugin->version = 2025070700;
-$plugin->requires = 2018050800;
-$plugin->component = 'tool_time_report';
-$plugin->release = '1.0.4';
-$plugin->maturity  = MATURITY_STABLE;
-$plugin->dependencies =[
-        'tool_coreuness' => ANY_VERSION
+$definitions = [
+    'selectoptions' => [
+        'mode' => cache_store::MODE_APPLICATION,
+        'simplekeys' => true,
+    ]
 ];

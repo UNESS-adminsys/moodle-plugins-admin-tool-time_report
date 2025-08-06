@@ -24,12 +24,11 @@
 
 defined('MOODLE_INTERNAL') || die;
 
-$messageproviders = array (
-    'reportcreation' => array (
+$messageproviders = [
+    'reportcreation' => [
         'defaults' => [
             'popup' => MESSAGE_PERMITTED + MESSAGE_DEFAULT_ENABLED + MESSAGE_DEFAULT_ENABLED,
-            'email' => MESSAGE_PERMITTED
+            'email' => MESSAGE_PERMITTED,
         ],
-        'capability'  => 'tool/time_report:view'
-    ),
-);
+    ],
+];

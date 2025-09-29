@@ -421,7 +421,6 @@ class generate_time_report extends adhoc_task {
 
         if (file_exists($CFG->dirroot . '/admin/tool/coreuness/classes/api/core_request.php')) {
             try {
-                require_once($CFG->dirroot . '/admin/tool/coreuness/classes/api/core_request.php');
                 $core = new \tool_coreuness\api\core_request();
                 $userjson = $core->get_json_from_endpoint(
                     'utilisateur/',

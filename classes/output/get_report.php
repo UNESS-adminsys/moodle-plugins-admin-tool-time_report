@@ -31,6 +31,11 @@ use templatable;
 use stdClass;
 
 class get_report implements renderable, templatable {
+    private mixed $requestorid;
+    private mixed $userid;
+    private mixed $contextid;
+    private mixed $username;
+    private mixed $reportfiles;
 
     public function __construct($requestorid, $userid, $username, $contextid, $reportfiles) {
         $this->requestorid = $requestorid;
@@ -44,7 +49,8 @@ class get_report implements renderable, templatable {
      * Export this data so it can be used as the context for a mustache template.
      *
      * @param renderer_base $output
-     * @return stdClass
+     *
+     * @return array
      * @throws coding_exception
      * @throws moodle_exception
      */
@@ -56,7 +62,7 @@ class get_report implements renderable, templatable {
             $this->userid,
             $this->username,
             $this->contextid,
-            $this->reportfiles
+            $this->reportfiles,
         ]);
 
         return [
@@ -65,9 +71,9 @@ class get_report implements renderable, templatable {
             'username' => $this->username,
             'contextid' => $this->contextid,
             'reportfiles' => $this->reportfiles,
-            'has_reportfiles' => count($this->reportfiles) > 0 ? true : false,
+            'has_reportfiles' => count($this->reportfiles) > 0,
             'clearingaction' => 'clear_files.php',
-            'lang' => $CFG->lang
+            'lang' => $CFG->lang,
         ];
     }
 }

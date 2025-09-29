@@ -69,3 +69,12 @@ $string['settings:available_on_admins_desc'] = 'Make the report available on adm
 $string['settings:dbdriver'] = 'Database driver';
 $string['settings:dbdriver_desc'] = 'Database driver selection.';
 $string['settings:calculation_rule_text'] = "Define used text to explain how the report is generated. Use {i} and {b} to symbolise 'idletime' and 'borrowedtime' variables.";
+$string['settings:use_view_table'] = 'Use a view for logs';
+$string['settings:use_view_table_desc'] = 'If there are multiple SQL log tables, allows the data to be retrieved from a single SQL view';
+$string['settings:name_view_table'] = 'View name';
+$string['settings:name_view_table_desc'] = 'Name of the SQL view for logs';
+$string['settings:logo'] = 'Logo';
+$string['settings:logo_desc'] = 'Logo in the header of the generated report';
+$string['university_not_specified'] = 'Not specified';
+$string['cachedef_selectoptions'] = 'This is the description of the cache somedata';
+

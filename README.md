@@ -1,5 +1,7 @@
 # moodle-tool_time_report
 
+Fork from https://github.com/fondation-unit/moodle-tool_time_report
+
 User tool for [Moodle](https://moodle.org/) creating reports of time spent online.
 
 * [Installation](#installation)
@@ -17,7 +19,6 @@ User tool for [Moodle](https://moodle.org/) creating reports of time spent onlin
 1. Git clone the plugin in the `admin/tool` directory.
 2. Rename the plugin folder as `time_report`
 3. Finish the installation
-
 
 ## Usage
 
@@ -85,6 +86,17 @@ Defines the amount of time counted in the report that the user has after being c
 
 Without this, the last action of viewing a course module performed by a user (e.g. a PDF file) before his inactivity would not generate additional connection time for one day. For the benefit of the doubt, we grant a specific amount of time.
 
+### use_view_table
+
+If there are multiple SQL log tables, allows the data to be retrieved from a single SQL view
+
+### name_view_table
+
+Name of the SQL view/table for logs
+
+### logo
+
+Add logo in first page header
 
 ## Development
 

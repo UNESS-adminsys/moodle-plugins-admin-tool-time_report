@@ -39,32 +39,32 @@ if ($hassiteconfig) {
             new lang_string('settings:targets', 'tool_time_report'),
             new lang_string('settings:targets', 'tool_time_report'),
             $defaulttargets,
-            $targets)
-        );
+            $targets
+        ));
 
         // Idle time.
         $settingspage->add(new admin_setting_configduration(
             'tool_time_report/idletime',
             new lang_string('settings:idletime', 'tool_time_report'),
             new lang_string('settings:idletime_desc', 'tool_time_report'),
-            30 * MINSECS)
-        );
+            30 * MINSECS
+        ));
 
         // Borrowed time when idle.
         $settingspage->add(new admin_setting_configduration(
             'tool_time_report/borrowedtime',
             new lang_string('settings:borrowedtime', 'tool_time_report'),
             new lang_string('settings:borrowedtime_desc', 'tool_time_report'),
-            15 * MINSECS)
-        );
+            15 * MINSECS
+        ));
 
         // Make the report available on admin profiles.
         $settingspage->add(new admin_setting_configcheckbox(
             'tool_time_report/available_on_admins',
             new lang_string('settings:available_on_admins', 'tool_time_report'),
             new lang_string('settings:available_on_admins_desc', 'tool_time_report'),
-            1)
-        );
+            1
+        ));
 
         // DB driver selection.
         $drivers = \logstore_database\helper::get_drivers();
@@ -77,24 +77,29 @@ if ($hassiteconfig) {
             new lang_string('settings:dbdriver', 'tool_time_report'),
             new lang_string('settings:dbdriver_desc', 'tool_time_report'),
             $defaultdbdriver,
-            $drivers)
-        );
+            $drivers
+        ));
 
         $settingspage->add(new admin_setting_configcheckbox(
-                        'tool_time_report/use_view_table',
-                        'Utilisé une view pour les logs',
-                        'S\'il y à plusieurs table sql de logs, permet de prendre les données dans une vue sql ',
-                        '0'
-                )
-        );
+            'tool_time_report/use_view_table',
+            new lang_string('settings:use_view_table', 'tool_time_report'),
+            new lang_string('settings:use_view_table_desc', 'tool_time_report'),
+            '0'
+        ));
 
         $settingspage->add(new admin_setting_configtext(
-                        'tool_time_report/name_view_table',
-                        'Nom de la vue',
-                        'Nom de la vue sql pour les logs',
-                        ''
-                )
-        );
+            'tool_time_report/name_view_table',
+            new lang_string('settings:name_view_table', 'tool_time_report'),
+            new lang_string('settings:name_view_table_desc', 'tool_time_report'),
+            ''
+        ));
+
+        $settingspage->add(new admin_setting_configtext(
+            'tool_time_report/logo',
+            new lang_string('settings:logo', 'tool_time_report'),
+            new lang_string('settings:logo_desc', 'tool_time_report'),
+            ''
+        ));
     }
 
     $ADMIN->add('reports', $settingspage);
